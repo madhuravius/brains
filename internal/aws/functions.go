@@ -7,8 +7,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
-	"github.com/pterm/pterm"
 	"github.com/charmbracelet/glamour"
+	"github.com/pterm/pterm"
 )
 
 func (a *AWSConfig) CallAWSBedrock(ctx context.Context, modelID string, req bedrockRequest) ([]byte, error) {
