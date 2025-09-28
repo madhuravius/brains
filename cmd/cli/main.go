@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/pterm/pterm"
@@ -29,6 +30,25 @@ func main() {
 						os.Exit(1)
 					}
 					pterm.Success.Println("Health check complete")
+					return nil
+				},
+			},
+			{
+				Name:  "ask",
+				Usage: "send a prompt to the Bedrock model and display the response",
+				Action: func(c *cli.Context) error {
+					prompt := c.Args().Get(0)
+					if prompt == "" {
+						return fmt.Errorf("prompt argument required")
+					}
+					if !a.SetAndValidateCredentials() {
+						pterm.Error.Println("unable to validate credentials")
+						os.Exit(1)
+					}
+					if !a.Ask(prompt) {
+						pterm.Error.Println("failed to get response from Bedrock")
+						os.Exit(1)
+					}
 					return nil
 				},
 			},
