@@ -14,9 +14,9 @@ type AWSConfig struct {
 	defaultBedrockModel string
 }
 
-func NewAWSConfig() *AWSConfig {
+func NewAWSConfig(model string) *AWSConfig {
 	return &AWSConfig{
-		defaultBedrockModel: "openai.gpt-oss-120b-1:0",
+		defaultBedrockModel: model,
 	}
 }
 

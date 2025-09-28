@@ -29,3 +29,5 @@ output/*
 
 build/*
 !build/.gitkeep
+
+.brains.yml
