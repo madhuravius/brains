@@ -6,17 +6,29 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/bedrock"
+	"github.com/aws/aws-sdk-go-v2/service/bedrock/types"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
 	"github.com/charmbracelet/glamour"
 	"github.com/pterm/pterm"
 )
 
+type BedrockInvoker interface {
+	InvokeModel(ctx context.Context, input *bedrockruntime.InvokeModelInput) (*bedrockruntime.InvokeModelOutput, error)
+	ListFoundationModels(ctx context.Context, input *bedrock.ListFoundationModelsInput) (*bedrock.ListFoundationModelsOutput, error)
+}
+
 type clientInvoker struct {
-	client *bedrockruntime.Client
+	bedrockruntimeClient *bedrockruntime.Client
+	bedrockClient        *bedrock.Client
 }
 
 func (c *clientInvoker) InvokeModel(ctx context.Context, input *bedrockruntime.InvokeModelInput) (*bedrockruntime.InvokeModelOutput, error) {
-	return c.client.InvokeModel(ctx, input)
+	return c.bedrockruntimeClient.InvokeModel(ctx, input)
+}
+
+func (c *clientInvoker) ListFoundationModels(ctx context.Context, input *bedrock.ListFoundationModelsInput) (*bedrock.ListFoundationModelsOutput, error) {
+	return c.bedrockClient.ListFoundationModels(ctx, input)
 }
 
 func (a *AWSConfig) SetInvoker(invoker BedrockInvoker) {
@@ -27,7 +39,27 @@ func (a *AWSConfig) getInvoker() BedrockInvoker {
 	if a.invoker != nil {
 		return a.invoker
 	}
-	return &clientInvoker{client: bedrockruntime.NewFromConfig(a.cfg)}
+	return &clientInvoker{
+		bedrockruntimeClient: bedrockruntime.NewFromConfig(a.cfg),
+		bedrockClient:        bedrock.NewFromConfig(a.cfg),
+	}
+}
+
+func (a *AWSConfig) DescribeModel(model string) *types.FoundationModelSummary {
+	client := a.getInvoker()
+	out, err := client.ListFoundationModels(context.Background(),
+		&bedrock.ListFoundationModelsInput{})
+	if err != nil {
+		pterm.Error.Printf("list models: %v\n", err)
+		return nil
+	}
+	for _, m := range out.ModelSummaries {
+		if *m.ModelId == model {
+			return &m
+		}
+	}
+	pterm.Error.Printf("model %s not found\n", model)
+	return nil
 }
 
 func (a *AWSConfig) CallAWSBedrock(ctx context.Context, modelID string, req BedrockRequest) ([]byte, error) {
