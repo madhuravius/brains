@@ -1,0 +1,27 @@
+run:
+  timeout: 5m
+
+issues:
+  exclude-use-default: false
+  exclude:
+    - 'G304: Potential file inclusion via variable'      # gosec
+    - 'G306: Expect WriteFile permissions to be 0600 or less' # gosec
+    - 'ST1000: at least one file in a package should have a package comment' # stylecheck
+
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - gofmt
+    - goimports
+    - ineffassign
+    - typecheck
+    - unused
+    - misspell
+    - unconvert
+    - unparam
+    - dupl
+    - gocritic
+    - gosec
+    - prealloc
+    - stylecheck

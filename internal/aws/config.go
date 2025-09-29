@@ -9,31 +9,47 @@ import (
 	"github.com/pterm/pterm"
 )
 
+type STSClient interface {
+	GetCallerIdentity(context.Context, *sts.GetCallerIdentityInput, ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error)
+}
+
+// AWSConfig holds configuration needed to interact with AWS Bedrock.
 type AWSConfig struct {
 	cfg                 aws.Config
 	defaultBedrockModel string
+	region              string
+	invoker             BedrockInvoker
 }
 
-func NewAWSConfig() *AWSConfig {
+var loadConfigFunc = config.LoadDefaultConfig
+var newSTSClientFunc = func(cfg aws.Config, optFns ...func(*sts.Options)) STSClient {
+	return sts.NewFromConfig(cfg, optFns...)
+}
+
+// NewAWSConfig creates a new AWSConfig with the supplied model ID and region.
+func NewAWSConfig(model string, region string) *AWSConfig {
 	return &AWSConfig{
-		defaultBedrockModel: "openai.gpt-oss-120b-1:0",
+		defaultBedrockModel: model,
+		region:              region,
 	}
 }
 
+// SetAndValidateCredentials loads the AWS SDK configuration for the configured
+// region and validates the credentials by calling STS GetCallerIdentity.
 func (a *AWSConfig) SetAndValidateCredentials() bool {
 	pterm.Info.Println("checking AWS credentials")
-	cfg, err := config.LoadDefaultConfig(context.Background())
+	cfg, err := loadConfigFunc(context.Background(), config.WithRegion(a.region))
 	if err != nil {
 		pterm.Error.Printf("unable to load SDK config, %s\n", err.Error())
 		return false
 	}
 	a.cfg = cfg
-	client := sts.NewFromConfig(cfg)
-	resp, err := client.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
+	client := newSTSClientFunc(cfg)
+	_, err = client.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
 	if err != nil {
 		pterm.Error.Printf("credentials invalid: %s\n", err.Error())
 		return false
 	}
-	pterm.Info.Printf("Valid credentials for ARN: %s (Account: %s)\n", *resp.Arn, *resp.Account)
+	pterm.Info.Println("Valid credentials")
 	return true
 }

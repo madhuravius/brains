@@ -4,15 +4,34 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
+	"github.com/charmbracelet/glamour"
 	"github.com/pterm/pterm"
 )
 
-func CallAWSBedrock(ctx context.Context, cfg aws.Config, modelID string, req bedrockRequest) ([]byte, error) {
-	client := bedrockruntime.NewFromConfig(cfg)
+type clientInvoker struct {
+	client *bedrockruntime.Client
+}
+
+func (c *clientInvoker) InvokeModel(ctx context.Context, input *bedrockruntime.InvokeModelInput) (*bedrockruntime.InvokeModelOutput, error) {
+	return c.client.InvokeModel(ctx, input)
+}
+
+func (a *AWSConfig) SetInvoker(invoker BedrockInvoker) {
+	a.invoker = invoker
+}
+
+func (a *AWSConfig) getInvoker() BedrockInvoker {
+	if a.invoker != nil {
+		return a.invoker
+	}
+	return &clientInvoker{client: bedrockruntime.NewFromConfig(a.cfg)}
+}
+
+func (a *AWSConfig) CallAWSBedrock(ctx context.Context, modelID string, req BedrockRequest) ([]byte, error) {
+	client := a.getInvoker()
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal Bedrock request: %w", err)
@@ -30,7 +49,7 @@ func CallAWSBedrock(ctx context.Context, cfg aws.Config, modelID string, req bed
 	return resp.Body, nil
 }
 
-func printCost(usage map[string]any) {
+func (a *AWSConfig) printCost(usage map[string]any) {
 	promptTokens, completionTokens := 0, 0
 	if v, ok := usage["prompt_tokens"]; ok {
 		if val, okFloat := v.(float64); okFloat {
@@ -48,37 +67,39 @@ func printCost(usage map[string]any) {
 	pterm.Info.Printf("Estimated cost for this request: $%.6f (prompt tokens: %d, completion tokens: %d)\n", cost, promptTokens, completionTokens)
 }
 
-func printBedrockMessage(content string) {
-	const startTag = "<reasoning>"
-	const endTag = "</reasoning>"
-
-	reasoning := ""
-	response := strings.TrimSpace(content)
-
-	if strings.Contains(content, startTag) && strings.Contains(content, endTag) {
-		startIdx := strings.Index(content, startTag) + len(startTag)
-		endIdx := strings.Index(content, endTag)
-		if startIdx < endIdx {
-			reasoning = strings.TrimSpace(content[startIdx:endIdx])
-			response = strings.TrimSpace(content[endIdx+len(endTag):])
+func (a *AWSConfig) printContext(usage map[string]any) {
+	promptTokens, completionTokens := 0, 0
+	if v, ok := usage["prompt_tokens"]; ok {
+		if val, okFloat := v.(float64); okFloat {
+			promptTokens = int(val)
 		}
 	}
+	if v, ok := usage["completion_tokens"]; ok {
+		if val, okFloat := v.(float64); okFloat {
+			completionTokens = int(val)
+		}
+	}
+	total := promptTokens + completionTokens
+	const tokenLimit = 128000
+	pterm.Info.Printf("Current context used: %d tokens (limit %d)\n", total, tokenLimit)
+}
 
-	if reasoning != "" {
-		pterm.Info.Printf("Reasoning: %s\n", reasoning)
-	}
-	if response != "" {
-		pterm.Info.Printf("Response: %s\n", response)
-	}
+func (a *AWSConfig) printBedrockMessage(content string) {
+	r, _ := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(120),
+	)
+	result, _ := r.Render(content)
+	fmt.Println(result)
 }
 
 func (a *AWSConfig) ValidateBedrockConfiguration() bool {
 	ctx := context.Background()
-	simpleReq := bedrockRequest{
-		Messages: []bedrockMessage{
+	simpleReq := BedrockRequest{
+		Messages: []BedrockMessage{
 			{
 				Role: "user",
-				Content: []bedrockContent{
+				Content: []BedrockContent{
 					{
 						Type: "text",
 						Text: "This is a health check via API call to make sure a connection to this LLM is established. Please reply with a short three to five word affirmation if you are able to interpret this message that the health check is successful.",
@@ -87,7 +108,7 @@ func (a *AWSConfig) ValidateBedrockConfiguration() bool {
 			},
 		},
 	}
-	respBody, err := CallAWSBedrock(ctx, a.cfg, a.defaultBedrockModel, simpleReq)
+	respBody, err := a.CallAWSBedrock(ctx, a.defaultBedrockModel, simpleReq)
 	if err != nil {
 		pterm.Error.Printf("InvokeModel error: %v\n", err)
 		return false
@@ -98,8 +119,48 @@ func (a *AWSConfig) ValidateBedrockConfiguration() bool {
 		return false
 	}
 	for _, choice := range data.Choices {
-		printBedrockMessage(choice.Message.Content)
+		a.printBedrockMessage(choice.Message.Content)
 	}
-	printCost(data.Usage)
+	a.printCost(data.Usage)
+	a.printContext(data.Usage)
+	return true
+}
+
+func (a *AWSConfig) Ask(prompt, personaInstructions, addedContext string) bool {
+	ctx := context.Background()
+	if personaInstructions != "" {
+		prompt = fmt.Sprintf("%s%s", personaInstructions, prompt)
+	}
+	if addedContext != "" {
+		prompt = fmt.Sprintf("%s%s", prompt, addedContext)
+	}
+	req := BedrockRequest{
+		Messages: []BedrockMessage{
+			{
+				Role: "user",
+				Content: []BedrockContent{
+					{
+						Type: "text",
+						Text: prompt,
+					},
+				},
+			},
+		},
+	}
+	respBody, err := a.CallAWSBedrock(ctx, a.defaultBedrockModel, req)
+	if err != nil {
+		pterm.Error.Printf("InvokeModel error: %v\n", err)
+		return false
+	}
+	var data ChatResponse
+	if err := json.Unmarshal(respBody, &data); err != nil {
+		pterm.Error.Printf("Json Unmarshal error (when parsing Bedrock Body): %v\n", err)
+		return false
+	}
+	for _, choice := range data.Choices {
+		a.printBedrockMessage(choice.Message.Content)
+	}
+	a.printCost(data.Usage)
+	a.printContext(data.Usage)
 	return true
 }

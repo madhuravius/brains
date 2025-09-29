@@ -1,0 +1,34 @@
+version: "2"
+linters:
+  enable:
+    - dupl
+    - gocritic
+    - gosec
+    - misspell
+    - prealloc
+    - staticcheck
+    - unconvert
+    - unparam
+  exclusions:
+    generated: lax
+    rules:
+      - path: (.+)\.go$
+        text: 'G304: Potential file inclusion via variable'
+      - path: (.+)\.go$
+        text: 'G306: Expect WriteFile permissions to be 0600 or less'
+      - path: (.+)\.go$
+        text: 'ST1000: at least one file in a package should have a package comment'
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
