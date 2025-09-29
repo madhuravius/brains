@@ -13,6 +13,7 @@ type STSClient interface {
 	GetCallerIdentity(context.Context, *sts.GetCallerIdentityInput, ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error)
 }
 
+// AWSConfig holds configuration needed to interact with AWS Bedrock.
 type AWSConfig struct {
 	cfg                 aws.Config
 	defaultBedrockModel string
@@ -25,6 +26,7 @@ var newSTSClientFunc = func(cfg aws.Config, optFns ...func(*sts.Options)) STSCli
 	return sts.NewFromConfig(cfg, optFns...)
 }
 
+// NewAWSConfig creates a new AWSConfig with the supplied model ID and region.
 func NewAWSConfig(model string, region string) *AWSConfig {
 	return &AWSConfig{
 		defaultBedrockModel: model,
@@ -32,6 +34,8 @@ func NewAWSConfig(model string, region string) *AWSConfig {
 	}
 }
 
+// SetAndValidateCredentials loads the AWS SDK configuration for the configured
+// region and validates the credentials by calling STS GetCallerIdentity.
 func (a *AWSConfig) SetAndValidateCredentials() bool {
 	pterm.Info.Println("checking AWS credentials")
 	cfg, err := loadConfigFunc(context.Background(), config.WithRegion(a.region))

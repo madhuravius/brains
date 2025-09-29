@@ -26,7 +26,8 @@ func (b *BrainsConfig) SetContextFromGlob(glob string) (string, error) {
 	if len(files) == 0 {
 		return "", fmt.Errorf("no files matched pattern %s", glob)
 	}
-	var contents []string
+	contents := make([]string, 0, len(files)*2)
+
 	for idx, fpath := range files {
 		data, err := os.ReadFile(fpath)
 		if err != nil {
