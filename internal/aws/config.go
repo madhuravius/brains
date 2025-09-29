@@ -9,10 +9,20 @@ import (
 	"github.com/pterm/pterm"
 )
 
+type STSClient interface {
+	GetCallerIdentity(context.Context, *sts.GetCallerIdentityInput, ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error)
+}
+
 type AWSConfig struct {
 	cfg                 aws.Config
 	defaultBedrockModel string
 	region              string
+	invoker             BedrockInvoker
+}
+
+var loadConfigFunc = config.LoadDefaultConfig
+var newSTSClientFunc = func(cfg aws.Config, optFns ...func(*sts.Options)) STSClient {
+	return sts.NewFromConfig(cfg, optFns...)
 }
 
 func NewAWSConfig(model string, region string) *AWSConfig {
@@ -24,18 +34,18 @@ func NewAWSConfig(model string, region string) *AWSConfig {
 
 func (a *AWSConfig) SetAndValidateCredentials() bool {
 	pterm.Info.Println("checking AWS credentials")
-	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(a.region))
+	cfg, err := loadConfigFunc(context.Background(), config.WithRegion(a.region))
 	if err != nil {
 		pterm.Error.Printf("unable to load SDK config, %s\n", err.Error())
 		return false
 	}
 	a.cfg = cfg
-	client := sts.NewFromConfig(cfg)
-	resp, err := client.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
+	client := newSTSClientFunc(cfg)
+	_, err = client.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
 	if err != nil {
 		pterm.Error.Printf("credentials invalid: %s\n", err.Error())
 		return false
 	}
-	pterm.Info.Printf("Valid credentials for ARN: %s (Account: %s)\n", *resp.Arn, *resp.Account)
+	pterm.Info.Println("Valid credentials")
 	return true
 }

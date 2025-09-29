@@ -13,7 +13,7 @@ type BrainsConfig struct {
 	Personas  map[string]string `yaml:"personas"`
 }
 
-var defaultConfig = BrainsConfig{
+var DefaultConfig = BrainsConfig{
 	AWSRegion: "us-west-2",
 	Model:     "openai.gpt-oss-120b-1:0",
 	Personas:  map[string]string{},
@@ -36,9 +36,9 @@ func LoadConfig() (*BrainsConfig, error) {
 	}
 	if cfgPath == "" {
 		target := paths[0]
-		data, _ := yaml.Marshal(&defaultConfig)
+		data, _ := yaml.Marshal(&DefaultConfig)
 		_ = os.WriteFile(target, data, 0o644)
-		c := defaultConfig
+		c := DefaultConfig
 		return &c, nil
 	}
 	b, err := os.ReadFile(cfgPath)
@@ -50,10 +50,10 @@ func LoadConfig() (*BrainsConfig, error) {
 		return nil, err
 	}
 	if cfg.AWSRegion == "" {
-		cfg.AWSRegion = defaultConfig.AWSRegion
+		cfg.AWSRegion = DefaultConfig.AWSRegion
 	}
 	if cfg.Model == "" {
-		cfg.Model = defaultConfig.Model
+		cfg.Model = DefaultConfig.Model
 	}
 	return &cfg, nil
 }

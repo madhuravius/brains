@@ -11,8 +11,28 @@ import (
 	"github.com/pterm/pterm"
 )
 
-func (a *AWSConfig) CallAWSBedrock(ctx context.Context, modelID string, req bedrockRequest) ([]byte, error) {
-	client := bedrockruntime.NewFromConfig(a.cfg)
+type clientInvoker struct {
+	client *bedrockruntime.Client
+}
+
+func (c *clientInvoker) InvokeModel(ctx context.Context, input *bedrockruntime.InvokeModelInput) (*bedrockruntime.InvokeModelOutput, error) {
+	return c.client.InvokeModel(ctx, input)
+}
+
+// SetInvoker - used mainly for setters and testing purposes
+func (a *AWSConfig) SetInvoker(invoker BedrockInvoker) {
+	a.invoker = invoker
+}
+
+func (a *AWSConfig) getInvoker() BedrockInvoker {
+	if a.invoker != nil {
+		return a.invoker
+	}
+	return &clientInvoker{client: bedrockruntime.NewFromConfig(a.cfg)}
+}
+
+func (a *AWSConfig) CallAWSBedrock(ctx context.Context, modelID string, req BedrockRequest) ([]byte, error) {
+	client := a.getInvoker()
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal Bedrock request: %w", err)
@@ -59,11 +79,11 @@ func (a *AWSConfig) printBedrockMessage(content string) {
 
 func (a *AWSConfig) ValidateBedrockConfiguration() bool {
 	ctx := context.Background()
-	simpleReq := bedrockRequest{
-		Messages: []bedrockMessage{
+	simpleReq := BedrockRequest{
+		Messages: []BedrockMessage{
 			{
 				Role: "user",
-				Content: []bedrockContent{
+				Content: []BedrockContent{
 					{
 						Type: "text",
 						Text: "This is a health check via API call to make sure a connection to this LLM is established. Please reply with a short three to five word affirmation if you are able to interpret this message that the health check is successful.",
@@ -97,12 +117,11 @@ func (a *AWSConfig) Ask(prompt, personaInstructions, addedContext string) bool {
 	if addedContext != "" {
 		prompt = fmt.Sprintf("%s%s", prompt, addedContext)
 	}
-
-	req := bedrockRequest{
-		Messages: []bedrockMessage{
+	req := BedrockRequest{
+		Messages: []BedrockMessage{
 			{
 				Role: "user",
-				Content: []bedrockContent{
+				Content: []BedrockContent{
 					{
 						Type: "text",
 						Text: prompt,
