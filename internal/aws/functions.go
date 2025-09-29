@@ -19,7 +19,6 @@ func (c *clientInvoker) InvokeModel(ctx context.Context, input *bedrockruntime.I
 	return c.client.InvokeModel(ctx, input)
 }
 
-// SetInvoker - used mainly for setters and testing purposes
 func (a *AWSConfig) SetInvoker(invoker BedrockInvoker) {
 	a.invoker = invoker
 }
@@ -68,6 +67,23 @@ func (a *AWSConfig) printCost(usage map[string]any) {
 	pterm.Info.Printf("Estimated cost for this request: $%.6f (prompt tokens: %d, completion tokens: %d)\n", cost, promptTokens, completionTokens)
 }
 
+func (a *AWSConfig) printContext(usage map[string]any) {
+	promptTokens, completionTokens := 0, 0
+	if v, ok := usage["prompt_tokens"]; ok {
+		if val, okFloat := v.(float64); okFloat {
+			promptTokens = int(val)
+		}
+	}
+	if v, ok := usage["completion_tokens"]; ok {
+		if val, okFloat := v.(float64); okFloat {
+			completionTokens = int(val)
+		}
+	}
+	total := promptTokens + completionTokens
+	const tokenLimit = 128000
+	pterm.Info.Printf("Current context used: %d tokens (limit %d)\n", total, tokenLimit)
+}
+
 func (a *AWSConfig) printBedrockMessage(content string) {
 	r, _ := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
@@ -106,6 +122,7 @@ func (a *AWSConfig) ValidateBedrockConfiguration() bool {
 		a.printBedrockMessage(choice.Message.Content)
 	}
 	a.printCost(data.Usage)
+	a.printContext(data.Usage)
 	return true
 }
 
@@ -144,5 +161,6 @@ func (a *AWSConfig) Ask(prompt, personaInstructions, addedContext string) bool {
 		a.printBedrockMessage(choice.Message.Content)
 	}
 	a.printCost(data.Usage)
+	a.printContext(data.Usage)
 	return true
 }

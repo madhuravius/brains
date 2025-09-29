@@ -94,6 +94,8 @@ func main() {
 						pterm.Error.Println("failed to get response from Bedrock")
 						os.Exit(1)
 					}
+
+					pterm.Success.Println("Question answered.")
 					return nil
 				},
 			},
