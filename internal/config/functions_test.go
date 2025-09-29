@@ -1,4 +1,4 @@
-package config
+package config_test
 
 import (
 	"os"
@@ -6,10 +6,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"brains/internal/config"
 )
 
 func TestGetPersonaInstructionsFormatting(t *testing.T) {
-	b := &BrainsConfig{
+	b := &config.BrainsConfig{
 		Personas: map[string]string{
 			"tester": "Test persona text.",
 		},
@@ -19,7 +21,7 @@ func TestGetPersonaInstructionsFormatting(t *testing.T) {
 }
 
 func TestSetContextFromGlobInvalidPattern(t *testing.T) {
-	b := &BrainsConfig{}
+	b := &config.BrainsConfig{}
 	_, err := b.SetContextFromGlob("[")
 	assert.Error(t, err)
 }
@@ -29,7 +31,7 @@ func TestSetContextFromGlobFileReadError(t *testing.T) {
 	dirPath := filepath.Join(tmpDir, "subdir")
 	_ = os.Mkdir(dirPath, 0o700)
 
-	b := &BrainsConfig{}
+	b := &config.BrainsConfig{}
 	_, err := b.SetContextFromGlob(filepath.Join(dirPath, "*"))
 	assert.Error(t, err)
 }
