@@ -8,13 +8,15 @@ import (
 )
 
 type BrainsConfig struct {
-	AWSRegion string `yaml:"aws_region"`
-	Model     string `yaml:"model"`
+	AWSRegion string            `yaml:"aws_region"`
+	Model     string            `yaml:"model"`
+	Personas  map[string]string `yaml:"personas"`
 }
 
 var defaultConfig = BrainsConfig{
 	AWSRegion: "us-west-2",
 	Model:     "openai.gpt-oss-120b-1:0",
+	Personas:  map[string]string{},
 }
 
 func LoadConfig() (*BrainsConfig, error) {

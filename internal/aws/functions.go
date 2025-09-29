@@ -51,6 +51,7 @@ func (a *AWSConfig) printCost(usage map[string]any) {
 func (a *AWSConfig) printBedrockMessage(content string) {
 	r, _ := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(120),
 	)
 	result, _ := r.Render(content)
 	fmt.Println(result)
@@ -88,8 +89,15 @@ func (a *AWSConfig) ValidateBedrockConfiguration() bool {
 	return true
 }
 
-func (a *AWSConfig) Ask(prompt string) bool {
+func (a *AWSConfig) Ask(prompt, personaInstructions, addedContext string) bool {
 	ctx := context.Background()
+	if personaInstructions != "" {
+		prompt = fmt.Sprintf("%s%s", personaInstructions, prompt)
+	}
+	if addedContext != "" {
+		prompt = fmt.Sprintf("%s%s", prompt, addedContext)
+	}
+
 	req := bedrockRequest{
 		Messages: []bedrockMessage{
 			{

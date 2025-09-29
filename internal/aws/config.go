@@ -12,17 +12,19 @@ import (
 type AWSConfig struct {
 	cfg                 aws.Config
 	defaultBedrockModel string
+	region              string
 }
 
-func NewAWSConfig(model string) *AWSConfig {
+func NewAWSConfig(model string, region string) *AWSConfig {
 	return &AWSConfig{
 		defaultBedrockModel: model,
+		region:              region,
 	}
 }
 
 func (a *AWSConfig) SetAndValidateCredentials() bool {
 	pterm.Info.Println("checking AWS credentials")
-	cfg, err := config.LoadDefaultConfig(context.Background())
+	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(a.region))
 	if err != nil {
 		pterm.Error.Printf("unable to load SDK config, %s\n", err.Error())
 		return false
