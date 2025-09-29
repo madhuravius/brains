@@ -110,7 +110,7 @@ func TestValidateBedrockConfigurationSuccess(t *testing.T) {
 	ok := cfg.ValidateBedrockConfiguration()
 	assert.True(t, ok)
 
-	w.Close()
+	_ = w.Close()
 	_, _ = io.ReadAll(r)
 	os.Stdout = oldStdout
 
@@ -157,7 +157,7 @@ func TestAskSuccess(t *testing.T) {
 	ok := cfg.Ask("prompt", "", "")
 	assert.True(t, ok)
 
-	w.Close()
+	_ = w.Close()
 	_, _ = io.ReadAll(r)
 	os.Stdout = oldStdout
 
