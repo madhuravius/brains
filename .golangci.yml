@@ -17,9 +17,6 @@ linters:
     - ineffassign
     - typecheck
     - unused
-    - deadcode
-    - structcheck
-    - varcheck
     - misspell
     - unconvert
     - unparam
