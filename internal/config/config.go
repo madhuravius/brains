@@ -3,27 +3,39 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 )
 
-// BrainsConfig holds the configuration values read from .brains.yml.
+type logger struct {
+	enabled bool
+	file    *os.File
+	mu      sync.Mutex
+	mem     []string
+}
+
+type SimpleLogger interface {
+	LogMessage(string)
+	GetLogContext() string
+}
+
 type BrainsConfig struct {
-	AWSRegion string            `yaml:"aws_region"`
-	Model     string            `yaml:"model"`
-	Personas  map[string]string `yaml:"personas"`
+	LoggingEnabled bool              `yaml:"logging_enabled"`
+	AWSRegion      string            `yaml:"aws_region"`
+	Model          string            `yaml:"model"`
+	Personas       map[string]string `yaml:"personas"`
+
+	logger `yaml:"-"`
 }
 
-// DefaultConfig is used when no configuration file is found.
 var DefaultConfig = BrainsConfig{
-	AWSRegion: "us-west-2",
-	Model:     "openai.gpt-oss-120b-1:0",
-	Personas:  map[string]string{},
+	LoggingEnabled: true,
+	AWSRegion:      "us-west-2",
+	Model:          "openai.gpt-oss-120b-1:0",
+	Personas:       map[string]string{},
 }
 
-// LoadConfig searches for a .brains.yml file in the current working directory
-// and the user's home directory. If none is found, it writes a default
-// configuration file (with restrictive permissions) and returns that default.
 func LoadConfig() (*BrainsConfig, error) {
 	paths := []string{}
 	if cwd, err := os.Getwd(); err == nil {
@@ -45,8 +57,7 @@ func LoadConfig() (*BrainsConfig, error) {
 		if err := os.WriteFile(target, data, 0o600); err != nil {
 			return nil, err
 		}
-		c := DefaultConfig
-		return &c, nil
+		return &DefaultConfig, nil
 	}
 	b, err := os.ReadFile(cfgPath)
 	if err != nil {
@@ -61,6 +72,10 @@ func LoadConfig() (*BrainsConfig, error) {
 	}
 	if cfg.Model == "" {
 		cfg.Model = DefaultConfig.Model
+	}
+
+	if err := cfg.initLogger(cfg.LoggingEnabled); err != nil {
+		return nil, err
 	}
 	return &cfg, nil
 }

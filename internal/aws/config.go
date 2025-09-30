@@ -7,6 +7,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/pterm/pterm"
+
+	brainsConfig "brains/internal/config"
 )
 
 type STSClient interface {
@@ -18,6 +20,7 @@ type AWSConfig struct {
 	defaultBedrockModel string
 	region              string
 	invoker             BedrockInvoker
+	logger              brainsConfig.SimpleLogger
 }
 
 var loadConfigFunc = config.LoadDefaultConfig
@@ -50,4 +53,5 @@ func (a *AWSConfig) SetAndValidateCredentials() bool {
 	return true
 }
 
-func (a *AWSConfig) GetConfig() aws.Config { return a.cfg }
+func (a *AWSConfig) GetConfig() aws.Config                 { return a.cfg }
+func (a *AWSConfig) SetLogger(l brainsConfig.SimpleLogger) { a.logger = l }

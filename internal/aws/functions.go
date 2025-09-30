@@ -125,6 +125,7 @@ func (a *AWSConfig) printBedrockMessage(content string) {
 	fmt.Println(result)
 }
 
+// ValidateBedrockConfiguration performs a lightweight health‑check against the Bedrock model.
 func (a *AWSConfig) ValidateBedrockConfiguration() bool {
 	ctx := context.Background()
 	simpleReq := BedrockRequest{
@@ -140,6 +141,9 @@ func (a *AWSConfig) ValidateBedrockConfiguration() bool {
 			},
 		},
 	}
+	if a.logger != nil {
+		a.logger.LogMessage("[REQUEST] health‑check prompt")
+	}
 	respBody, err := a.CallAWSBedrock(ctx, a.defaultBedrockModel, simpleReq)
 	if err != nil {
 		pterm.Error.Printf("InvokeModel error: %v\n", err)
@@ -152,19 +156,34 @@ func (a *AWSConfig) ValidateBedrockConfiguration() bool {
 	}
 	for _, choice := range data.Choices {
 		a.printBedrockMessage(choice.Message.Content)
+		if a.logger != nil {
+			a.logger.LogMessage("[RESPONSE] " + choice.Message.Content)
+		}
 	}
 	a.printCost(data.Usage)
 	a.printContext(data.Usage)
 	return true
 }
 
+// Ask sends a prompt (optionally prefixed with log context and persona instructions) to Bedrock.
 func (a *AWSConfig) Ask(prompt, personaInstructions, addedContext string) bool {
 	ctx := context.Background()
+	promptToSendBedrock := prompt
+	if a.logger != nil {
+		if logCtx := a.logger.GetLogContext(); logCtx != "" {
+			promptToSendBedrock = fmt.Sprintf("%s\n\n%s", logCtx, prompt)
+		}
+	}
 	if personaInstructions != "" {
 		prompt = fmt.Sprintf("%s%s", personaInstructions, prompt)
 	}
+	if a.logger != nil {
+		a.logger.LogMessage("[REQUEST] " + prompt)
+	}
+
+	// do not update prompt in place as this will inflate the log
 	if addedContext != "" {
-		prompt = fmt.Sprintf("%s%s", prompt, addedContext)
+		promptToSendBedrock = fmt.Sprintf("%s%s", prompt, addedContext)
 	}
 	req := BedrockRequest{
 		Messages: []BedrockMessage{
@@ -173,12 +192,13 @@ func (a *AWSConfig) Ask(prompt, personaInstructions, addedContext string) bool {
 				Content: []BedrockContent{
 					{
 						Type: "text",
-						Text: prompt,
+						Text: promptToSendBedrock,
 					},
 				},
 			},
 		},
 	}
+
 	respBody, err := a.CallAWSBedrock(ctx, a.defaultBedrockModel, req)
 	if err != nil {
 		pterm.Error.Printf("InvokeModel error: %v\n", err)
@@ -190,6 +210,9 @@ func (a *AWSConfig) Ask(prompt, personaInstructions, addedContext string) bool {
 		return false
 	}
 	for _, choice := range data.Choices {
+		if a.logger != nil {
+			a.logger.LogMessage("[RESPONSE] " + choice.Message.Content)
+		}
 		a.printBedrockMessage(choice.Message.Content)
 	}
 	a.printCost(data.Usage)

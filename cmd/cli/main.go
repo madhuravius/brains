@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/pterm/pterm"
@@ -12,8 +11,8 @@ import (
 )
 
 type CLIConfig struct {
-	awsConfig    aws.AWSConfig
-	brainsConfig config.BrainsConfig
+	awsConfig    *aws.AWSConfig
+	brainsConfig *config.BrainsConfig
 	persona      string
 	glob         string
 }
@@ -25,9 +24,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	awsConfig := aws.NewAWSConfig(cfg.Model, cfg.AWSRegion)
+	awsConfig.SetLogger(cfg)
+
 	cliConfig := CLIConfig{
-		awsConfig:    *aws.NewAWSConfig(cfg.Model, cfg.AWSRegion),
-		brainsConfig: *cfg,
+		awsConfig:    awsConfig,
+		brainsConfig: cfg,
 	}
 
 	app := &cli.App{
@@ -73,7 +75,8 @@ func main() {
 				Action: func(c *cli.Context) error {
 					prompt := c.Args().Get(0)
 					if prompt == "" {
-						return fmt.Errorf("prompt argument required")
+						textInput := pterm.DefaultInteractiveTextInput.WithMultiLine()
+						prompt, _ = textInput.Show()
 					}
 					if !cliConfig.awsConfig.SetAndValidateCredentials() {
 						pterm.Error.Println("unable to validate credentials")
@@ -96,6 +99,27 @@ func main() {
 					}
 
 					pterm.Success.Println("Question answered.")
+					return nil
+				},
+			},
+			{
+				Name:  "log",
+				Usage: "print all logs",
+				Action: func(c *cli.Context) error {
+					cliConfig.brainsConfig.PrintLogs()
+					pterm.Success.Println("Logs printed.")
+					return nil
+				},
+			},
+			{
+				Name:  "reset",
+				Usage: "clear all logs",
+				Action: func(c *cli.Context) error {
+					if err := cliConfig.brainsConfig.Reset(); err != nil {
+						pterm.Error.Printfln("reset failed: %v", err)
+						return err
+					}
+					pterm.Success.Println("Logs cleared.")
 					return nil
 				},
 			},
