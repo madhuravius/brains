@@ -74,10 +74,13 @@ func (a *AWSConfig) CallAWSBedrock(ctx context.Context, modelID string, req Bedr
 		ContentType: aws.String("application/json"),
 		Accept:      aws.String("application/json"),
 	}
+	spinner, _ := pterm.DefaultSpinner.Start("Loading response from AWS Bedrock")
 	resp, err := client.InvokeModel(ctx, input)
 	if err != nil {
+		spinner.Fail()
 		return nil, err
 	}
+	spinner.Success()
 	return resp.Body, nil
 }
 

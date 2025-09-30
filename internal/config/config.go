@@ -26,7 +26,7 @@ type BrainsConfig struct {
 	Model          string            `yaml:"model"`
 	Personas       map[string]string `yaml:"personas"`
 
-	logger `yaml:"-"`
+	logger logger `yaml:"-"`
 }
 
 var DefaultConfig = BrainsConfig{
