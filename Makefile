@@ -25,3 +25,7 @@ test:
 pretty:
 	go fmt ./...
 .PHONY: pretty
+
+release:
+	goreleaser release
+.PHONY: release
