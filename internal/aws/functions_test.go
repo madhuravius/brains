@@ -8,6 +8,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/service/bedrock"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -23,6 +24,14 @@ func (m *mockInvoker) InvokeModel(ctx context.Context, input *bedrockruntime.Inv
 	args := m.Called(ctx, input)
 	if out := args.Get(0); out != nil {
 		return out.(*bedrockruntime.InvokeModelOutput), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
+func (m *mockInvoker) ListFoundationModels(ctx context.Context, input *bedrock.ListFoundationModelsInput) (*bedrock.ListFoundationModelsOutput, error) {
+	args := m.Called(ctx, input)
+	if out := args.Get(0); out != nil {
+		return out.(*bedrock.ListFoundationModelsOutput), args.Error(1)
 	}
 	return nil, args.Error(1)
 }

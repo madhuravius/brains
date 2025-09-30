@@ -7,18 +7,20 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/pterm/pterm"
+
+	brainsConfig "brains/internal/config"
 )
 
 type STSClient interface {
 	GetCallerIdentity(context.Context, *sts.GetCallerIdentityInput, ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error)
 }
 
-// AWSConfig holds configuration needed to interact with AWS Bedrock.
 type AWSConfig struct {
 	cfg                 aws.Config
 	defaultBedrockModel string
 	region              string
 	invoker             BedrockInvoker
+	logger              brainsConfig.SimpleLogger
 }
 
 var loadConfigFunc = config.LoadDefaultConfig
@@ -26,7 +28,6 @@ var newSTSClientFunc = func(cfg aws.Config, optFns ...func(*sts.Options)) STSCli
 	return sts.NewFromConfig(cfg, optFns...)
 }
 
-// NewAWSConfig creates a new AWSConfig with the supplied model ID and region.
 func NewAWSConfig(model string, region string) *AWSConfig {
 	return &AWSConfig{
 		defaultBedrockModel: model,
@@ -34,8 +35,6 @@ func NewAWSConfig(model string, region string) *AWSConfig {
 	}
 }
 
-// SetAndValidateCredentials loads the AWS SDK configuration for the configured
-// region and validates the credentials by calling STS GetCallerIdentity.
 func (a *AWSConfig) SetAndValidateCredentials() bool {
 	pterm.Info.Println("checking AWS credentials")
 	cfg, err := loadConfigFunc(context.Background(), config.WithRegion(a.region))
@@ -53,3 +52,6 @@ func (a *AWSConfig) SetAndValidateCredentials() bool {
 	pterm.Info.Println("Valid credentials")
 	return true
 }
+
+func (a *AWSConfig) GetConfig() aws.Config                 { return a.cfg }
+func (a *AWSConfig) SetLogger(l brainsConfig.SimpleLogger) { a.logger = l }

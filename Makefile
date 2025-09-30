@@ -14,6 +14,10 @@ tools:
 	go install gotest.tools/gotestsum@latest
 .PHONY: tools
 
+lint:
+	golangci-lint run
+.PHONY: lint
+
 test:
 	go run gotest.tools/gotestsum@latest --format testname -- -coverprofile=cover.out ./...
 .PHONY: test
