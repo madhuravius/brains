@@ -37,7 +37,7 @@ func (b *BrainsConfig) SetContextFromGlob(pattern string) (string, error) {
 			continue
 		}
 		if info.IsDir() {
-			continue // skip directories
+			continue
 		}
 
 		data, err := os.ReadFile(fpath)
