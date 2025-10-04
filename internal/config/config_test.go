@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -54,11 +55,37 @@ func TestSetContextFromGlob(t *testing.T) {
 	_ = os.WriteFile(file2, []byte("content B"), 0o600)
 
 	b := &config.BrainsConfig{}
-	ctx, err := b.SetContextFromGlob(filepath.Join(tmpDir, "*.txt"))
+
+	// Change working directory to the temporary directory so that the glob works.
+	origWD, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origWD) }()
+	_ = os.Chdir(tmpDir)
+
+	ctx, err := b.SetContextFromGlob("*.txt")
 	assert.NoError(t, err)
 
-	assert.Contains(t, ctx, "--- a.txt ---")
-	assert.Contains(t, ctx, "content A")
-	assert.Contains(t, ctx, "--- b.txt ---")
-	assert.Contains(t, ctx, "content B")
+	// The function returns a JSON string mapping file names to their contents.
+	var result map[string]string
+	err = json.Unmarshal([]byte(ctx), &result)
+	assert.NoError(t, err)
+
+	assert.Len(t, result, 2)
+	assert.Equal(t, "content A", result["a.txt"])
+	assert.Equal(t, "content B", result["b.txt"])
+}
+
+func TestSetContextFromGlobInvalidPattern(t *testing.T) {
+	b := &config.BrainsConfig{}
+	_, err := b.SetContextFromGlob("[")
+	assert.Error(t, err)
+}
+
+func TestSetContextFromGlobFileReadError(t *testing.T) {
+	tmpDir := t.TempDir()
+	dirPath := filepath.Join(tmpDir, "subdir")
+	_ = os.Mkdir(dirPath, 0o700)
+
+	b := &config.BrainsConfig{}
+	_, err := b.SetContextFromGlob(filepath.Join(dirPath, "*"))
+	assert.Error(t, err)
 }
