@@ -54,10 +54,7 @@ func (b *BrainsConfig) isIgnored(path string) bool {
 			continue
 		}
 
-		// Normalize pattern
 		pat = filepath.ToSlash(pat)
-
-		// Folder patterns: "foo/" → prefix match
 		if strings.HasSuffix(pat, "/") {
 			if strings.HasPrefix(path, pat) {
 				return true
@@ -65,24 +62,20 @@ func (b *BrainsConfig) isIgnored(path string) bool {
 			continue
 		}
 
-		// exclude general lock/large files
 		base := filepath.Base(path)
 		if _, found := defaultIgnoreNames[base]; found {
 			return true
 		}
 
-		// Match full path directly
 		if matched, _ := filepath.Match(pat, path); matched {
 			return true
 		}
 
-		// Match on filename only (like *.log)
 		basePath := filepath.Base(path)
 		if matched, _ := filepath.Match(pat, basePath); matched {
 			return true
 		}
 
-		// Match prefix for patterns like ".aider*" (which may cover directories)
 		if strings.HasSuffix(pat, "*") {
 			prefix := strings.TrimSuffix(pat, "*")
 			if strings.HasPrefix(path, prefix) {

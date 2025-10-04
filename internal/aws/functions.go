@@ -146,7 +146,6 @@ func (a *AWSConfig) printBedrockMessage(content string) {
 	fmt.Println(result)
 }
 
-// ValidateBedrockConfiguration performs a lightweight health‑check against the Bedrock model.
 func (a *AWSConfig) ValidateBedrockConfiguration() bool {
 	ctx := context.Background()
 	simpleReq := BedrockRequest{
@@ -182,7 +181,6 @@ func (a *AWSConfig) ValidateBedrockConfiguration() bool {
 	return true
 }
 
-// Ask sends a prompt (optionally prefixed with log context and persona instructions) to Bedrock.
 func (a *AWSConfig) Ask(prompt, personaInstructions, addedContext string) bool {
 	ctx := context.Background()
 	promptToSendBedrock := prompt
@@ -194,7 +192,6 @@ func (a *AWSConfig) Ask(prompt, personaInstructions, addedContext string) bool {
 	}
 	a.logger.LogMessage("[REQUEST] " + prompt)
 
-	// do not update prompt in place as this will inflate the log
 	if addedContext != "" {
 		promptToSendBedrock = fmt.Sprintf("%s%s", prompt, addedContext)
 	}
@@ -293,7 +290,6 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 		return false
 	}
 
-	// if confirmed, execute
 	coderPrompt := CoderPromptPostProcess
 	ctx := context.Background()
 	promptToSendBedrock := prompt
