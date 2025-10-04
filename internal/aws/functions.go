@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+  "os"
 	"regexp"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
 	"github.com/charmbracelet/glamour"
 	"github.com/pterm/pterm"
+  "github.com/sergi/go-diff/diffmatchpatch"
 )
 
 const CoderPromptPostProcess = `
@@ -347,9 +349,35 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 		return false
 	}
 
-	for _, update := range updates.CodeUpdates {
-		pterm.Info.Printfln("Updating: %s", update.Path)
+  for _, update := range updates.CodeUpdates {
+	pterm.Info.Printfln("Updating file: %s", update.Path)
+
+	dmp := diffmatchpatch.New()
+	diffs := dmp.DiffMain(update.OldCode, update.NewCode, false)
+	diffText := dmp.DiffPrettyText(diffs)
+
+	r, _ := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(100),
+	)
+	renderedDiff, _ := r.Render(fmt.Sprintf("```diff\n%s\n```", diffText))
+	fmt.Println(renderedDiff)
+
+	ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText("Apply this change?").Show()
+	if !ok {
+		pterm.Warning.Printfln("Skipped: %s", update.Path)
+		continue
 	}
+
+	err := os.WriteFile(update.Path, []byte(update.NewCode), 0644)
+	if err != nil {
+		pterm.Error.Printfln("Failed to write %s: %v", update.Path, err)
+		continue
+	}
+
+	pterm.Success.Printfln("Updated %s successfully", update.Path)
+}
+
 
 	a.printCost(data.Usage)
 	a.printContext(data.Usage)
