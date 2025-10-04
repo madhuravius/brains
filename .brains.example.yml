@@ -1,6 +1,8 @@
 aws_region: us-east-1
 model: openai.gpt-oss-120b-1:0
 logging_enabled: true
+default_persona: dev
+default_context: "**/*"
 personas:
   arch: |
     You are an expert developer but also an expert solutions architect in software. You will avoid coding as much 

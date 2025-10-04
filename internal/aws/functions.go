@@ -13,7 +13,7 @@ import (
 	"github.com/pterm/pterm"
 )
 
-const BasePromptAffix = "If you are suggesting code diffs. Always return a JSON list at the end of your response of deltas to apply in a parent object of 'data'. Do not output natural language at the end."
+const CoderPromptPostProcess = "If you are suggesting code diffs. Always return a JSON list at the end of your response of deltas to apply in a parent object of 'data'. Do not output natural language at the end."
 
 type BedrockInvoker interface {
 	InvokeModel(ctx context.Context, input *bedrockruntime.InvokeModelInput) (*bedrockruntime.InvokeModelOutput, error)
@@ -222,5 +222,21 @@ func (a *AWSConfig) Ask(prompt, personaInstructions, addedContext string) bool {
 	}
 	a.printCost(data.Usage)
 	a.printContext(data.Usage)
+	return true
+}
+
+func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool {
+	// ask
+	if !a.Ask(prompt, personaInstructions, addedContext) {
+		return false
+	}
+	// verify confirmation
+	pterm.Info.Printf("confirm attempting executing the above.")
+	result, _ := pterm.DefaultInteractiveConfirm.Show()
+	if !result {
+		pterm.Warning.Printf("refused to continue, breaking early")
+		return false
+	}
+	// if confirmed, execute
 	return true
 }
