@@ -17,19 +17,19 @@ type CLIConfig struct {
 	glob         string
 }
 
-func generateCommonFlags(cliConfig *CLIConfig) []cli.Flag {
+func generateCommonFlags(cliConfig *CLIConfig, cfg *config.BrainsConfig) []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
 			Aliases:     []string{"p"},
 			Name:        "persona",
-			Value:       "default",
+			Value:       cfg.DefaultPersona,
 			Usage:       "Supply a persona with a corresponding value in \".brains.yml\" to use as part of the prompt.",
 			Destination: &cliConfig.persona,
 		},
 		&cli.StringFlag{
 			Aliases:     []string{"a"},
 			Name:        "add",
-			Value:       "",
+			Value:       cfg.DefaultContext,
 			Usage:       "Supply a glob pattern to add to the context",
 			Destination: &cliConfig.glob,
 		},
@@ -46,7 +46,7 @@ func main() {
 	awsConfig := aws.NewAWSConfig(cfg.Model, cfg.AWSRegion)
 	awsConfig.SetLogger(cfg)
 
-	cliConfig := CLIConfig{
+	cliConfig := &CLIConfig{
 		awsConfig:    awsConfig,
 		brainsConfig: cfg,
 	}
@@ -75,7 +75,7 @@ func main() {
 			{
 				Name:  "ask",
 				Usage: "send a prompt to the Bedrock model and display the response",
-				Flags: generateCommonFlags(&cliConfig),
+				Flags: generateCommonFlags(cliConfig, cfg),
 				Action: func(c *cli.Context) error {
 					prompt := c.Args().Get(0)
 					if prompt == "" {
@@ -108,7 +108,7 @@ func main() {
 			{
 				Name:  "code",
 				Usage: "send a prompt to the Bedrock model and execute coding actions",
-				Flags: generateCommonFlags(&cliConfig),
+				Flags: generateCommonFlags(cliConfig, cfg),
 				Action: func(c *cli.Context) error {
 					prompt := c.Args().Get(0)
 					if prompt == "" {
