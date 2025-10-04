@@ -26,7 +26,7 @@ func (b *BrainsConfig) isIgnored(path string) bool {
 		return true
 	}
 
-  for _, pat := range b.ignorePatterns {
+	for _, pat := range b.ignorePatterns {
 		pat = strings.TrimSpace(pat)
 		if pat == "" {
 			continue
