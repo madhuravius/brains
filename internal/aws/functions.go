@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/bedrock"
@@ -23,7 +24,7 @@ Return **only JSON** describing the changes, no explanations.
 
 Return JSON in this format:
 {
-  "updates": [
+  "code_updates": [
     {"path": "example_file_name.go", "old_code": "...", "new_code": "..."}
   ]
 }`
@@ -228,10 +229,55 @@ func (a *AWSConfig) Ask(prompt, personaInstructions, addedContext string) bool {
 	return true
 }
 
-func extractJSON(raw string) string {
-	re := regexp.MustCompile(`(?s)\{.*\}`)
-	match := re.FindString(raw)
-	return match
+func extractJSON(raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", fmt.Errorf("empty response body")
+	}
+
+	reasoningRe := regexp.MustCompile(`(?s)<reasoning>.*?</reasoning>`)
+	raw = reasoningRe.ReplaceAllString(raw, "")
+	raw = strings.ReplaceAll(raw, "```json", "")
+	raw = strings.ReplaceAll(raw, "```", "")
+	raw = strings.TrimSpace(raw)
+
+	start := strings.Index(raw, "{")
+	if start == -1 {
+		return "", fmt.Errorf("no '{' found in response")
+	}
+
+	depth := 0
+	end := -1
+
+scanLoop:
+	for i := start; i < len(raw); i++ {
+		switch raw[i] {
+		case '{':
+			depth++
+		case '}':
+			depth--
+			if depth == 0 {
+				end = i + 1
+				break scanLoop
+			}
+		}
+	}
+
+	if end == -1 {
+		return "", fmt.Errorf("no balanced '}' found in response")
+	}
+
+	jsonPart := strings.TrimSpace(raw[start:end])
+
+	if idx := strings.LastIndex(jsonPart, "}"); idx != -1 && idx < len(jsonPart)-1 {
+		jsonPart = jsonPart[:idx+1]
+	}
+
+	if !strings.HasPrefix(jsonPart, "{") || !strings.HasSuffix(jsonPart, "}") {
+		return "", fmt.Errorf("malformed JSON segment")
+	}
+
+	return jsonPart, nil
 }
 
 func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool {
@@ -288,14 +334,23 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 		return false
 	}
 
+	extractedJSON, err := extractJSON(data.Choices[0].Message.Content)
+	if err != nil {
+		pterm.Error.Printf("Unable to process json from values provided: %v", err)
+		return false
+	}
+
 	var updates CodeModelResponse
-	err = json.Unmarshal([]byte(extractJSON(data.Choices[0].Message.Content)), &updates)
+	err = json.Unmarshal([]byte(extractedJSON), &updates)
 	if err != nil {
 		pterm.Error.Printf("Json Unmarshal error (when parsing codeModelUpdates Body): %v\n", err)
 		return false
 	}
 
-	a.logger.LogMessage(fmt.Sprintf("[RESPONSE] %v", updates))
+	for _, update := range updates.CodeUpdates {
+		pterm.Info.Printfln("Updating: %s", update.Path)
+	}
+
 	a.printCost(data.Usage)
 	a.printContext(data.Usage)
 
