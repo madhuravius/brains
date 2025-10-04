@@ -131,8 +131,7 @@ func main() {
 
 					}
 					if !cliConfig.awsConfig.Code(prompt, personaInstructions, addedContext) {
-						pterm.Error.Println("failed to get response from Bedrock")
-						os.Exit(1)
+						os.Exit(0)
 					}
 
 					pterm.Success.Println("code execution complete")

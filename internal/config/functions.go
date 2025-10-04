@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,27 @@ import (
 	doublestar "github.com/bmatcuk/doublestar/v4"
 	"github.com/pterm/pterm"
 )
+
+var defaultIgnoreNames = map[string]struct{}{
+	"package-lock.json": {},
+	"yarn.lock":         {},
+	"pnpm-lock.yaml":    {},
+	"bun.lockb":         {},
+	"go.sum":            {},
+	"poetry.lock":       {},
+	"Cargo.lock":        {},
+	"Gemfile.lock":      {},
+	"composer.lock":     {},
+	"Pipfile.lock":      {},
+	"mix.lock":          {},
+	"Podfile.lock":      {},
+	"package.json.lock": {},
+	"flake.lock":        {},
+	"requirements.txt":  {},
+	"target":            {},
+	"node_modules":      {},
+	".venv":             {},
+}
 
 func (b *BrainsConfig) GetPersonaInstructions(persona string) string {
 	personaText, found := b.Personas[persona]
@@ -43,14 +65,20 @@ func (b *BrainsConfig) isIgnored(path string) bool {
 			continue
 		}
 
+		// exclude general lock/large files
+		base := filepath.Base(path)
+		if _, found := defaultIgnoreNames[base]; found {
+			return true
+		}
+
 		// Match full path directly
 		if matched, _ := filepath.Match(pat, path); matched {
 			return true
 		}
 
 		// Match on filename only (like *.log)
-		base := filepath.Base(path)
-		if matched, _ := filepath.Match(pat, base); matched {
+		basePath := filepath.Base(path)
+		if matched, _ := filepath.Match(pat, basePath); matched {
 			return true
 		}
 
@@ -75,9 +103,9 @@ func (b *BrainsConfig) SetContextFromGlob(pattern string) (string, error) {
 		return "", fmt.Errorf("no files matched pattern %s", pattern)
 	}
 
-	contents := make([]string, 0, len(files)*2)
+	contents := make(map[string]string)
 
-	for idx, fpath := range files {
+	for _, fpath := range files {
 		if b.isIgnored(fpath) {
 			continue
 		}
@@ -97,13 +125,15 @@ func (b *BrainsConfig) SetContextFromGlob(pattern string) (string, error) {
 			continue
 		}
 
-		if idx == 0 {
-			contents = append(contents, "\n\n")
-		}
 		pterm.Info.Printfln("added file to context: %s", fpath)
-		contents = append(contents,
-			fmt.Sprintf("\n\n--- %s ---\n%s", filepath.Base(fpath), string(data)))
+		contents[fpath] = string(data)
 	}
 
-	return strings.Join(contents, ""), nil
+	contentData, err := json.Marshal(contents)
+	if err != nil {
+		pterm.Error.Printfln("failed to marshal file json map: %v", err)
+		return "", err
+	}
+
+	return string(contentData), nil
 }

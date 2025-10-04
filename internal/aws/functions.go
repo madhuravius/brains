@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/bedrock"
@@ -13,7 +14,19 @@ import (
 	"github.com/pterm/pterm"
 )
 
-const CoderPromptPostProcess = "If you are suggesting code diffs. Always return a JSON list at the end of your response of deltas to apply in a parent object of 'data'. Do not output natural language at the end."
+const CoderPromptPostProcess = `
+You are a code-editing assistant.
+
+Evaluate the most recent recommendations in the context provided. These should be implemented in code now.
+
+Return **only JSON** describing the changes, no explanations.
+
+Return JSON in this format:
+{
+  "updates": [
+    {"path": "example_file_name.go", "old_code": "...", "new_code": "..."}
+  ]
+}`
 
 type BedrockInvoker interface {
 	InvokeModel(ctx context.Context, input *bedrockruntime.InvokeModelInput) (*bedrockruntime.InvokeModelOutput, error)
@@ -146,9 +159,7 @@ func (a *AWSConfig) ValidateBedrockConfiguration() bool {
 			},
 		},
 	}
-	if a.logger != nil {
-		a.logger.LogMessage("[REQUEST] health‑check prompt")
-	}
+	a.logger.LogMessage("[REQUEST] health‑check prompt")
 	respBody, err := a.CallAWSBedrock(ctx, a.defaultBedrockModel, simpleReq)
 	if err != nil {
 		pterm.Error.Printf("InvokeModel error: %v\n", err)
@@ -161,9 +172,7 @@ func (a *AWSConfig) ValidateBedrockConfiguration() bool {
 	}
 	for _, choice := range data.Choices {
 		a.printBedrockMessage(choice.Message.Content)
-		if a.logger != nil {
-			a.logger.LogMessage("[RESPONSE] " + choice.Message.Content)
-		}
+		a.logger.LogMessage("[RESPONSE] " + choice.Message.Content)
 	}
 	a.printCost(data.Usage)
 	a.printContext(data.Usage)
@@ -174,17 +183,13 @@ func (a *AWSConfig) ValidateBedrockConfiguration() bool {
 func (a *AWSConfig) Ask(prompt, personaInstructions, addedContext string) bool {
 	ctx := context.Background()
 	promptToSendBedrock := prompt
-	if a.logger != nil {
-		if logCtx := a.logger.GetLogContext(); logCtx != "" {
-			promptToSendBedrock = fmt.Sprintf("%s\n\n%s", logCtx, prompt)
-		}
+	if logCtx := a.logger.GetLogContext(); logCtx != "" {
+		promptToSendBedrock = fmt.Sprintf("%s\n\n%s", logCtx, prompt)
 	}
 	if personaInstructions != "" {
 		prompt = fmt.Sprintf("%s%s", personaInstructions, prompt)
 	}
-	if a.logger != nil {
-		a.logger.LogMessage("[REQUEST] " + prompt)
-	}
+	a.logger.LogMessage("[REQUEST] " + prompt)
 
 	// do not update prompt in place as this will inflate the log
 	if addedContext != "" {
@@ -215,9 +220,7 @@ func (a *AWSConfig) Ask(prompt, personaInstructions, addedContext string) bool {
 		return false
 	}
 	for _, choice := range data.Choices {
-		if a.logger != nil {
-			a.logger.LogMessage("[RESPONSE] " + choice.Message.Content)
-		}
+		a.logger.LogMessage("[RESPONSE] " + choice.Message.Content)
 		a.printBedrockMessage(choice.Message.Content)
 	}
 	a.printCost(data.Usage)
@@ -225,18 +228,76 @@ func (a *AWSConfig) Ask(prompt, personaInstructions, addedContext string) bool {
 	return true
 }
 
+func extractJSON(raw string) string {
+	re := regexp.MustCompile(`(?s)\{.*\}`)
+	match := re.FindString(raw)
+	return match
+}
+
 func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool {
-	// ask
 	if !a.Ask(prompt, personaInstructions, addedContext) {
 		return false
 	}
-	// verify confirmation
-	pterm.Info.Printf("confirm attempting executing the above.")
+	pterm.Info.Printf("will edit files in place for those listed above\n")
 	result, _ := pterm.DefaultInteractiveConfirm.Show()
 	if !result {
 		pterm.Warning.Printf("refused to continue, breaking early")
 		return false
 	}
+
 	// if confirmed, execute
+	coderPrompt := CoderPromptPostProcess
+	ctx := context.Background()
+	promptToSendBedrock := prompt
+	if logCtx := a.logger.GetLogContext(); logCtx != "" {
+		promptToSendBedrock = fmt.Sprintf("%s\n\n%s", logCtx, coderPrompt)
+	}
+	if personaInstructions != "" {
+		coderPrompt = fmt.Sprintf("%s%s", personaInstructions, coderPrompt)
+	}
+	a.logger.LogMessage("[REQUEST] " + coderPrompt)
+	if addedContext != "" {
+		promptToSendBedrock = fmt.Sprintf("%s%s", coderPrompt, addedContext)
+	}
+	req := BedrockRequest{
+		Messages: []BedrockMessage{
+			{
+				Role: "user",
+				Content: []BedrockContent{
+					{
+						Type: "text",
+						Text: promptToSendBedrock,
+					},
+				},
+			},
+		},
+	}
+
+	respBody, err := a.CallAWSBedrock(ctx, a.defaultBedrockModel, req)
+	if err != nil {
+		pterm.Error.Printf("InvokeModel error: %v\n", err)
+		return false
+	}
+	var data ChatResponse
+	if err := json.Unmarshal(respBody, &data); err != nil {
+		pterm.Error.Printf("Json Unmarshal error (when parsing Bedrock Body): %v\n", err)
+		return false
+	}
+	if len(data.Choices) == 0 {
+		pterm.Error.Printf("On JSON Response for code updates did not get sufficient response")
+		return false
+	}
+
+	var updates CodeModelResponse
+	err = json.Unmarshal([]byte(extractJSON(data.Choices[0].Message.Content)), &updates)
+	if err != nil {
+		pterm.Error.Printf("Json Unmarshal error (when parsing codeModelUpdates Body): %v\n", err)
+		return false
+	}
+
+	a.logger.LogMessage(fmt.Sprintf("[RESPONSE] %v", updates))
+	a.printCost(data.Usage)
+	a.printContext(data.Usage)
+
 	return true
 }
