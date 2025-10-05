@@ -13,7 +13,7 @@ import (
 	"brains/internal/aws"
 )
 
-func (c *CoreConfig) Ask(prompt, personaInstructions, addedContext, modelID string) bool {
+func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, addedContext string) bool {
 	ctx := context.Background()
 	promptToSendBedrock := prompt
 	if logCtx := c.logger.GetLogContext(); logCtx != "" {

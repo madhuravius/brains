@@ -23,6 +23,7 @@ func TestValidateBedrockConfigurationSuccess(t *testing.T) {
 
 	cfg := &core.CoreConfig{}
 	cfg.SetAWSConfig(awsCfg)
+	cfg.SetLogger(&mockBrains.TestLogger{})
 
 	response := aws.ChatResponse{
 		Choices: []struct {
@@ -74,6 +75,7 @@ func TestAskSuccess(t *testing.T) {
 
 	cfg := &core.CoreConfig{}
 	cfg.SetAWSConfig(awsCfg)
+	cfg.SetLogger(&mockBrains.TestLogger{})
 
 	response := aws.ChatResponse{
 		Choices: []struct {

@@ -37,6 +37,7 @@ func (a *AWSConfig) CallAWSBedrock(ctx context.Context, modelID string, req Bedr
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal Bedrock request: %w", err)
 	}
+	pterm.Info.Printfln("Size of outbound request: %d", len(body))
 	input := &bedrockruntime.InvokeModelInput{
 		Body:        body,
 		ModelId:     aws.String(modelID),
