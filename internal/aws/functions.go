@@ -246,8 +246,6 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 		promptToSendBedrock += fmt.Sprintf("%s\n\n%s", logCtx, CoderPromptPostProcess)
 	}
 
-	fmt.Println(promptToSendBedrock)
-
 	req := BedrockRequest{
 		Messages: []BedrockMessage{
 			{
