@@ -227,7 +227,6 @@ func (a *AWSConfig) Ask(prompt, personaInstructions, addedContext string) bool {
 	return true
 }
 
-// Code method now uses extractJSON from json_utils.go
 func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool {
 	if !a.Ask(prompt, personaInstructions, addedContext) {
 		return false
@@ -239,19 +238,16 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 		return false
 	}
 
-	coderPrompt := CoderPromptPostProcess
+	promptToSendBedrock := ""
+
 	ctx := context.Background()
-	promptToSendBedrock := prompt
+	promptToSendBedrock += addedContext
 	if logCtx := a.logger.GetLogContext(); logCtx != "" {
-		promptToSendBedrock = fmt.Sprintf("%s\n\n%s", logCtx, coderPrompt)
+		promptToSendBedrock += fmt.Sprintf("%s\n\n%s", logCtx, CoderPromptPostProcess)
 	}
-	if personaInstructions != "" {
-		coderPrompt = fmt.Sprintf("%s%s", personaInstructions, coderPrompt)
-	}
-	a.logger.LogMessage("[REQUEST] " + coderPrompt)
-	if addedContext != "" {
-		promptToSendBedrock = fmt.Sprintf("%s%s", coderPrompt, addedContext)
-	}
+
+	fmt.Println(promptToSendBedrock)
+
 	req := BedrockRequest{
 		Messages: []BedrockMessage{
 			{
@@ -280,6 +276,8 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 		pterm.Error.Printf("On JSON Response for code updates did not get sufficient response")
 		return false
 	}
+
+	a.logger.LogMessage("[RESPONSE FOR CODE] " + data.Choices[0].Message.Content)
 
 	extractedJSON, err := extractJSON(data.Choices[0].Message.Content)
 	if err != nil {
