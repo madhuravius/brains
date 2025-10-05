@@ -41,3 +41,26 @@ func TestExtractJSON_ArrayWrappedInCodeUpdates(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expected, got)
 }
+
+func TestExtractJSON_NoJSONFound(t *testing.T) {
+	input := "This string contains no JSON at all."
+	_, err := extractJSON(input)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no JSON start found")
+}
+
+func TestExtractJSON_EmptyString(t *testing.T) {
+	input := ""
+	_, err := extractJSON(input)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "empty response body")
+}
+
+func TestExtractJSON_ArrayWithTrailingHyphen(t *testing.T) {
+	input := "Result:\n```json\n[{\"path\":\"file.go\",\"old_code\":\"old\",\"new_code\":\"new\"}]\n```\n- end of message"
+	expected := "{\"code_updates\":[{\"path\":\"file.go\",\"old_code\":\"old\",\"new_code\":\"new\"}]}"
+
+	got, err := extractJSON(input)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, got)
+}

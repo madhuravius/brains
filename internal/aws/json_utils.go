@@ -7,6 +7,10 @@ import (
 )
 
 // extractJSON extracts the first JSON payload from a raw string.
+// It removes common markdown fences, finds the first JSON start character,
+// and decodes the JSON value. If the extracted JSON is an array, it is
+// wrapped in an object with a "code_updates" field to match the expected
+// CodeModelResponse structure.
 func extractJSON(raw string) (string, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -24,7 +28,7 @@ func extractJSON(raw string) (string, error) {
 		return "", fmt.Errorf("no JSON start found")
 	}
 
-	// Decode the JSON from the first start character.
+	// Decode the JSON starting from the first start character.
 	dec := json.NewDecoder(strings.NewReader(raw[start:]))
 	var rawMsg json.RawMessage
 	if err := dec.Decode(&rawMsg); err != nil {

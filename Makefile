@@ -8,15 +8,13 @@ help: ## Show this help message
 	@echo "Common start‑up steps: \"make init\" and \"make build\""
 	@echo ""
 	@echo "Targets:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
-	  | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-30s %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-30s %s\n", $$1, $$2}'
 .PHONY: help
 
 init: ## Install Go module dependencies and run generators
 	go mod download
 	go generate ./...
 .PHONY: init
-
 
 build: ## Compile the binary into ./build/brains
 	echo "Dependencies used: "
@@ -44,4 +42,16 @@ pretty: ## Run gofmt to format source files
 release: ## Build and publish a new release via GoReleaser
 	goreleaser release
 .PHONY: release
+
+require-root: ## Ensure we have root privileges for actions that touch system paths
+	@if [ "$$$(id -u)" -ne 0 ]; then \
+		echo "Error: this target requires root. Run with sudo."; \
+		exit 1; \
+	fi
+.PHONY: require-root
+
+install: require-root ## Build and install the binary to /usr/local/bin
+	@$(MAKE) build
+	sudo install -m 0755 ./build/brains $(DESTDIR)/usr/local/bin/brains
+.PHONY: install
 
