@@ -16,7 +16,6 @@ import (
 	"brains/internal/aws"
 )
 
-// mockInvoker implements the BedrockInvoker interface for testing.
 type mockInvoker struct {
 	mock.Mock
 }
@@ -37,7 +36,6 @@ func (m *mockInvoker) ListFoundationModels(ctx context.Context, input *bedrock.L
 	return nil, args.Error(1)
 }
 
-// testLogger is a minimal implementation of the SimpleLogger interface that does nothing.
 type testLogger struct{}
 
 func (l *testLogger) LogMessage(string)     {}
@@ -91,7 +89,6 @@ func TestValidateBedrockConfigurationSuccess(t *testing.T) {
 	invokerMock := &mockInvoker{}
 	cfg.SetInvoker(invokerMock)
 
-	// Provide a no‑op logger to avoid nil‑pointer panics.
 	cfg.SetLogger(&testLogger{})
 
 	response := aws.ChatResponse{
@@ -122,7 +119,6 @@ func TestValidateBedrockConfigurationSuccess(t *testing.T) {
 		Body: respBytes,
 	}, nil)
 
-	// Capture stdout to keep the test output clean.
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
@@ -142,7 +138,6 @@ func TestAskSuccess(t *testing.T) {
 	invokerMock := &mockInvoker{}
 	cfg.SetInvoker(invokerMock)
 
-	// Provide a no‑op logger for the same reason as above.
 	cfg.SetLogger(&testLogger{})
 
 	response := aws.ChatResponse{
@@ -173,7 +168,6 @@ func TestAskSuccess(t *testing.T) {
 		Body: respBytes,
 	}, nil)
 
-	// Capture stdout to keep the test output clean.
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w

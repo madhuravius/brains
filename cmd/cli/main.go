@@ -143,7 +143,7 @@ func main() {
 				Usage: "print all logs",
 				Action: func(c *cli.Context) error {
 					cliConfig.brainsConfig.PrintLogs()
-					pterm.Success.Println("logs printed.")
+					pterm.Success.Println("logs printed")
 					return nil
 				},
 			},
@@ -155,7 +155,7 @@ func main() {
 						pterm.Error.Printfln("reset failed: %v", err)
 						return err
 					}
-					pterm.Success.Println("logs cleared.")
+					pterm.Success.Println("logs cleared")
 					return nil
 				},
 			},

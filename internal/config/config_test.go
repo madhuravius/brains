@@ -56,7 +56,6 @@ func TestSetContextFromGlob(t *testing.T) {
 
 	b := &config.BrainsConfig{}
 
-	// Change working directory to the temporary directory so that the glob works.
 	origWD, _ := os.Getwd()
 	defer func() { _ = os.Chdir(origWD) }()
 	_ = os.Chdir(tmpDir)
@@ -64,7 +63,6 @@ func TestSetContextFromGlob(t *testing.T) {
 	ctx, err := b.SetContextFromGlob("*.txt")
 	assert.NoError(t, err)
 
-	// The function returns a JSON string mapping file names to their contents.
 	var result map[string]string
 	err = json.Unmarshal([]byte(ctx), &result)
 	assert.NoError(t, err)
