@@ -1,6 +1,5 @@
 ## Default target displays help
 .DEFAULT_GOAL := help
-GOBIN ?= $$(go env GOBIN)
 
 # Targets
 help: ## Show this help message
@@ -35,7 +34,7 @@ lint: tools ## Run golangci‑lint over the codebase
 
 test: tools ## Execute unit tests with coverage
 	go run gotest.tools/gotestsum@latest --format testname -- -coverprofile=cover.out ./...
-	${GOBIN}/go-test-coverage --config=./.testcoverage.yml
+	go run github.com/vladopajic/go-test-coverage/v2@latest --config=./.testcoverage.yml
 .PHONY: test
 
 pretty: ## Run gofmt to format source files
