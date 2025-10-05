@@ -15,14 +15,6 @@ type STSClient interface {
 	GetCallerIdentity(context.Context, *sts.GetCallerIdentityInput, ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error)
 }
 
-type AWSConfig struct {
-	cfg                 aws.Config
-	defaultBedrockModel string
-	region              string
-	invoker             BedrockInvoker
-	logger              brainsConfig.SimpleLogger
-}
-
 var loadConfigFunc = config.LoadDefaultConfig
 var newSTSClientFunc = func(cfg aws.Config, optFns ...func(*sts.Options)) STSClient {
 	return sts.NewFromConfig(cfg, optFns...)

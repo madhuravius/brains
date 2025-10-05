@@ -1,4 +1,4 @@
-package aws
+package core
 
 const CoderPromptPostProcess = `
 You are a code-editing assistant.

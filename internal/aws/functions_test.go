@@ -8,54 +8,17 @@ import (
 	"os"
 	"testing"
 
-	"github.com/aws/aws-sdk-go-v2/service/bedrock"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
 	"brains/internal/aws"
+	mockBrains "brains/internal/mock"
 )
-
-type mockInvoker struct {
-	mock.Mock
-}
-
-// Implements InvokeModel for the classic API.
-func (m *mockInvoker) InvokeModel(ctx context.Context, input *bedrockruntime.InvokeModelInput) (*bedrockruntime.InvokeModelOutput, error) {
-	args := m.Called(ctx, input)
-	if out := args.Get(0); out != nil {
-		return out.(*bedrockruntime.InvokeModelOutput), args.Error(1)
-	}
-	return nil, args.Error(1)
-}
-
-// Implements ListFoundationModels for model discovery.
-func (m *mockInvoker) ListFoundationModels(ctx context.Context, input *bedrock.ListFoundationModelsInput) (*bedrock.ListFoundationModelsOutput, error) {
-	args := m.Called(ctx, input)
-	if out := args.Get(0); out != nil {
-		return out.(*bedrock.ListFoundationModelsOutput), args.Error(1)
-	}
-	return nil, args.Error(1)
-}
-
-// Implements ConverseModel for the newer Converse API.
-func (m *mockInvoker) ConverseModel(ctx context.Context, input *bedrockruntime.ConverseInput) (*bedrockruntime.ConverseOutput, error) {
-	args := m.Called(ctx, input)
-	if out := args.Get(0); out != nil {
-		return out.(*bedrockruntime.ConverseOutput), args.Error(1)
-	}
-	return nil, args.Error(1)
-}
-
-// testLogger satisfies the SimpleLogger interface used by AWSConfig.
-type testLogger struct{}
-
-func (l *testLogger) LogMessage(string)     {}
-func (l *testLogger) GetLogContext() string { return "" }
 
 func TestCallAWSBedrockSuccess(t *testing.T) {
 	cfg := &aws.AWSConfig{}
-	invokerMock := &mockInvoker{}
+	invokerMock := &mockBrains.MockInvoker{}
 	cfg.SetInvoker(invokerMock)
 
 	expectedBody := []byte(`{"choices":[],"usage":{}}`)
@@ -84,7 +47,7 @@ func TestCallAWSBedrockSuccess(t *testing.T) {
 
 func TestCallAWSBedrockError(t *testing.T) {
 	cfg := &aws.AWSConfig{}
-	invokerMock := &mockInvoker{}
+	invokerMock := &mockBrains.MockInvoker{}
 	cfg.SetInvoker(invokerMock)
 
 	invokerMock.On("InvokeModel", mock.Anything, mock.Anything).Return(nil, errors.New("invoke error"))
@@ -98,10 +61,10 @@ func TestCallAWSBedrockError(t *testing.T) {
 
 func TestValidateBedrockConfigurationSuccess(t *testing.T) {
 	cfg := &aws.AWSConfig{}
-	invokerMock := &mockInvoker{}
+	invokerMock := &mockBrains.MockInvoker{}
 	cfg.SetInvoker(invokerMock)
 
-	cfg.SetLogger(&testLogger{})
+	cfg.SetLogger(&mockBrains.TestLogger{})
 
 	response := aws.ChatResponse{
 		Choices: []struct {
@@ -136,55 +99,6 @@ func TestValidateBedrockConfigurationSuccess(t *testing.T) {
 	os.Stdout = w
 
 	ok := cfg.ValidateBedrockConfiguration()
-	assert.True(t, ok)
-
-	_ = w.Close()
-	_, _ = io.ReadAll(r)
-	os.Stdout = oldStdout
-
-	invokerMock.AssertExpectations(t)
-}
-
-func TestAskSuccess(t *testing.T) {
-	cfg := &aws.AWSConfig{}
-	invokerMock := &mockInvoker{}
-	cfg.SetInvoker(invokerMock)
-
-	cfg.SetLogger(&testLogger{})
-
-	response := aws.ChatResponse{
-		Choices: []struct {
-			Message struct {
-				Role    string `json:"role"`
-				Content string `json:"content"`
-			} `json:"message"`
-		}{
-			{
-				Message: struct {
-					Role    string `json:"role"`
-					Content string `json:"content"`
-				}{
-					Role:    "assistant",
-					Content: "Reply",
-				},
-			},
-		},
-		Usage: map[string]any{
-			"prompt_tokens":     1,
-			"completion_tokens": 1,
-		},
-	}
-	respBytes, _ := json.Marshal(response)
-
-	invokerMock.On("InvokeModel", mock.Anything, mock.Anything).Return(&bedrockruntime.InvokeModelOutput{
-		Body: respBytes,
-	}, nil)
-
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	ok := cfg.Ask("prompt", "", "")
 	assert.True(t, ok)
 
 	_ = w.Close()

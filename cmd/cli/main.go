@@ -8,11 +8,13 @@ import (
 
 	"brains/internal/aws"
 	"brains/internal/config"
+	"brains/internal/core"
 )
 
 type CLIConfig struct {
 	awsConfig    *aws.AWSConfig
 	brainsConfig *config.BrainsConfig
+	coreConfig   *core.CoreConfig
 	persona      string
 	glob         string
 }
@@ -46,9 +48,12 @@ func main() {
 	awsConfig := aws.NewAWSConfig(cfg.Model, cfg.AWSRegion)
 	awsConfig.SetLogger(cfg)
 
+	coreCfg := core.NewCoreConfig(awsConfig)
+
 	cliConfig := &CLIConfig{
 		awsConfig:    awsConfig,
 		brainsConfig: cfg,
+		coreConfig:   coreCfg,
 	}
 
 	app := &cli.App{
@@ -96,7 +101,7 @@ func main() {
 							os.Exit(1)
 						}
 					}
-					if !cliConfig.awsConfig.Ask(prompt, personaInstructions, addedContext) {
+					if !cliConfig.coreConfig.Ask(prompt, personaInstructions, cliConfig.brainsConfig.Model, addedContext) {
 						pterm.Error.Println("failed to get response from Bedrock")
 						os.Exit(1)
 					}
@@ -130,7 +135,7 @@ func main() {
 						}
 
 					}
-					if !cliConfig.awsConfig.Code(prompt, personaInstructions, addedContext) {
+					if !cliConfig.coreConfig.Code(prompt, personaInstructions, cliConfig.brainsConfig.Model, addedContext) {
 						os.Exit(0)
 					}
 

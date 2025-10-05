@@ -1,6 +1,20 @@
 package aws
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+
+	brainsConfig "brains/internal/config"
+)
+
+type AWSConfig struct {
+	cfg                 aws.Config
+	defaultBedrockModel string
+	region              string
+	invoker             BedrockInvoker
+	logger              brainsConfig.SimpleLogger
+}
 
 type ChatResponse struct {
 	Choices []struct {
