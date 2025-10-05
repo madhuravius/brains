@@ -35,7 +35,7 @@ func TestSetAndValidateCredentialsSuccess(t *testing.T) {
 		return mockClient
 	}
 
-	cfg := NewAWSConfig("model", "us-west-2")
+	cfg := NewAWSConfig("us-west-2")
 	ok := cfg.SetAndValidateCredentials()
 	assert.True(t, ok)
 }
@@ -55,7 +55,7 @@ func TestSetAndValidateCredentialsLoadError(t *testing.T) {
 		return &mockBrains.MockSTSClient{}
 	}
 
-	cfg := NewAWSConfig("model", "us-west-2")
+	cfg := NewAWSConfig("us-west-2")
 	ok := cfg.SetAndValidateCredentials()
 	assert.False(t, ok)
 }
@@ -79,7 +79,7 @@ func TestSetAndValidateCredentialsInvalidCredentials(t *testing.T) {
 		return mockClient
 	}
 
-	cfg := NewAWSConfig("model", "us-west-2")
+	cfg := NewAWSConfig("us-west-2")
 	ok := cfg.SetAndValidateCredentials()
 	assert.False(t, ok)
 }

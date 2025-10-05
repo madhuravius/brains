@@ -147,38 +147,3 @@ func (a *AWSConfig) PrintBedrockMessage(content string) {
 	result, _ := r.Render(content)
 	fmt.Println(result)
 }
-
-func (a *AWSConfig) ValidateBedrockConfiguration() bool {
-	ctx := context.Background()
-	simpleReq := BedrockRequest{
-		Messages: []BedrockMessage{
-			{
-				Role: "user",
-				Content: []BedrockContent{
-					{
-						Type: "text",
-						Text: "This is a health check via API call to make sure a connection to this LLM is established. Please reply with a short three to five word affirmation if you are able to interpret this message that the health check is successful.",
-					},
-				},
-			},
-		},
-	}
-	a.logger.LogMessage("[REQUEST] health‑check prompt")
-	respBody, err := a.CallAWSBedrock(ctx, a.defaultBedrockModel, simpleReq)
-	if err != nil {
-		pterm.Error.Printf("InvokeModel error: %v\n", err)
-		return false
-	}
-	var data ChatResponse
-	if err := json.Unmarshal(respBody, &data); err != nil {
-		pterm.Error.Printf("Json Unmarshal error (when parsing Bedrock Body): %v\n", err)
-		return false
-	}
-	for _, choice := range data.Choices {
-		a.PrintBedrockMessage(choice.Message.Content)
-		a.logger.LogMessage("[RESPONSE] " + choice.Message.Content)
-	}
-	a.PrintCost(data.Usage)
-	a.PrintContext(data.Usage)
-	return true
-}

@@ -20,10 +20,9 @@ var newSTSClientFunc = func(cfg aws.Config, optFns ...func(*sts.Options)) STSCli
 	return sts.NewFromConfig(cfg, optFns...)
 }
 
-func NewAWSConfig(model string, region string) *AWSConfig {
+func NewAWSConfig(region string) *AWSConfig {
 	return &AWSConfig{
-		defaultBedrockModel: model,
-		region:              region,
+		region: region,
 	}
 }
 

@@ -45,15 +45,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	awsConfig := aws.NewAWSConfig(cfg.Model, cfg.AWSRegion)
+	awsConfig := aws.NewAWSConfig(cfg.AWSRegion)
 	awsConfig.SetLogger(cfg)
 
-	coreCfg := core.NewCoreConfig(awsConfig)
+	coreConfig := core.NewCoreConfig(awsConfig)
+	coreConfig.SetLogger(cfg)
 
 	cliConfig := &CLIConfig{
 		awsConfig:    awsConfig,
 		brainsConfig: cfg,
-		coreConfig:   coreCfg,
+		coreConfig:   coreConfig,
 	}
 
 	app := &cli.App{
@@ -69,7 +70,7 @@ func main() {
 						pterm.Error.Println("unable to validate credentials")
 						os.Exit(1)
 					}
-					if !cliConfig.awsConfig.ValidateBedrockConfiguration() {
+					if !cliConfig.coreConfig.ValidateBedrockConfiguration(cliConfig.brainsConfig.Model) {
 						pterm.Error.Println("unable to access bedrock")
 						os.Exit(1)
 					}
