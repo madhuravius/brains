@@ -26,6 +26,12 @@ Return JSON in this format:
 {
   "code_updates": [
     {"path": "example_file_name.go", "old_code": "...", "new_code": "..."}
+  ],
+    "add_code_files": [
+    {"path": "new_file.go", "content": "..."}
+  ],
+    "remove_code_files": [
+    {"path": "old_file.go"}
   ]
 }
 `
@@ -284,6 +290,7 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 	}
 
 	var updates CodeModelResponse
+
 	err = json.Unmarshal([]byte(extractedJSON), &updates)
 	if err != nil {
 		pterm.Error.Printf("Json Unmarshal error (when parsing codeModelUpdates Body): %v\n", err)
@@ -291,7 +298,7 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 	}
 
 	for updateIdx, update := range updates.CodeUpdates {
-		pterm.Info.Printfln("Updating file: %s (%d/%d)", update.Path, updateIdx, len(updates.CodeUpdates))
+		pterm.Info.Printfln("Updating file: %s (%d/%d)", update.Path, updateIdx+1, len(updates.CodeUpdates))
 
 		dmp := diffmatchpatch.New()
 		diffs := dmp.DiffMain(update.OldCode, update.NewCode, false)
@@ -301,7 +308,7 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 			glamour.WithAutoStyle(),
 			glamour.WithWordWrap(100),
 		)
-		renderedDiff, _ := r.Render(fmt.Sprintf("```diff\n%s\n```", diffText))
+		renderedDiff, _ := r.Render(fmt.Sprintf("diff\n%s\n", diffText))
 		fmt.Println(renderedDiff)
 
 		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText("Apply this change?").Show()
@@ -310,13 +317,71 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 			continue
 		}
 
-		err := os.WriteFile(update.Path, []byte(update.NewCode), 0644)
-		if err != nil {
+		if err := os.WriteFile(update.Path, []byte(update.NewCode), 0644); err != nil {
 			pterm.Error.Printfln("Failed to write %s: %v", update.Path, err)
 			continue
 		}
-
 		pterm.Success.Printfln("Updated %s successfully", update.Path)
+	}
+
+	for addIdx, add := range updates.AddCodeFiles {
+		pterm.Info.Printfln("Adding new file: %s (%d/%d)", add.Path, addIdx+1, len(updates.AddCodeFiles))
+
+		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText("Create this file?").Show()
+		if !ok {
+			pterm.Warning.Printfln("Skipped creation of: %s", add.Path)
+			continue
+		}
+
+		dmp := diffmatchpatch.New()
+		diffs := dmp.DiffMain("", add.Content, false)
+		diffText := dmp.DiffPrettyText(diffs)
+
+		r, _ := glamour.NewTermRenderer(
+			glamour.WithAutoStyle(),
+			glamour.WithWordWrap(100),
+		)
+		renderedDiff, _ := r.Render(fmt.Sprintf("diff\n%s\n", diffText))
+		fmt.Println(renderedDiff)
+
+		if err := os.WriteFile(add.Path, []byte(add.Content), 0644); err != nil {
+			pterm.Error.Printfln("Failed to create %s: %v", add.Path, err)
+			continue
+		}
+		pterm.Success.Printfln("Created %s successfully", add.Path)
+	}
+
+	for remIdx, rem := range updates.RemoveCodeFiles {
+		pterm.Info.Printfln("Removing file: %s (%d/%d)", rem.Path, remIdx+1, len(updates.RemoveCodeFiles))
+
+		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText("Delete this file?").Show()
+		if !ok {
+			pterm.Warning.Printfln("Skipped deletion of: %s", rem.Path)
+			continue
+		}
+
+		oldContentBytes, readErr := os.ReadFile(rem.Path)
+		if readErr != nil {
+			pterm.Error.Printfln("Failed to read %s for diff: %v", rem.Path, readErr)
+			// Proceed with deletion even if we couldn't read the file
+		} else {
+			dmp := diffmatchpatch.New()
+			diffs := dmp.DiffMain(string(oldContentBytes), "", false)
+			diffText := dmp.DiffPrettyText(diffs)
+
+			r, _ := glamour.NewTermRenderer(
+				glamour.WithAutoStyle(),
+				glamour.WithWordWrap(100),
+			)
+			renderedDiff, _ := r.Render(fmt.Sprintf("diff\n%s\n", diffText))
+			fmt.Println(renderedDiff)
+		}
+
+		if err := os.Remove(rem.Path); err != nil {
+			pterm.Error.Printfln("Failed to delete %s: %v", rem.Path, err)
+			continue
+		}
+		pterm.Success.Printfln("Deleted %s successfully", rem.Path)
 	}
 
 	a.printCost(data.Usage)

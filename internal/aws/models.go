@@ -64,6 +64,17 @@ type CodeUpdate struct {
 	NewCode string `json:"new_code"`
 }
 
+type AddCodeFile struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+}
+
+type RemoveCodeFile struct {
+	Path string `json:"path"`
+}
+
 type CodeModelResponse struct {
-	CodeUpdates []CodeUpdate `json:"code_updates"`
+	CodeUpdates     []CodeUpdate     `json:"code_updates"`
+	AddCodeFiles    []AddCodeFile    `json:"add_code_files,omitempty"`
+	RemoveCodeFiles []RemoveCodeFile `json:"remove_code_files,omitempty"`
 }

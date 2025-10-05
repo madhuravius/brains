@@ -64,3 +64,13 @@ func TestExtractJSON_ArrayWithTrailingHyphen(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expected, got)
 }
+
+// New test: JSON preceded by comment-like characters that previously caused a decode error.
+func TestExtractJSON_WithLeadingCommentSlash(t *testing.T) {
+	input := "// some comment line\n{\"key\":\"value\"}"
+	expected := "{\"key\":\"value\"}"
+
+	got, err := extractJSON(input)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, got)
+}
