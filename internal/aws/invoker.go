@@ -34,7 +34,7 @@ func (a *AWSConfig) SetInvoker(invoker BedrockInvoker) {
 	a.invoker = invoker
 }
 
-func (a *AWSConfig) getInvoker() BedrockInvoker {
+func (a *AWSConfig) GetInvoker() BedrockInvoker {
 	if a.invoker != nil {
 		return a.invoker
 	}

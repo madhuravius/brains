@@ -40,6 +40,8 @@ exclude:
   paths:
     # - \.pb\.go$    # excludes all protobuf generated files
     # - ^pkg/bar     # exclude package `pkg/bar`
+    - cmd
+    - internal/mock
 
 # (optional; default false)
 # When true, requires all coverage-ignore annotations to include explanatory comments

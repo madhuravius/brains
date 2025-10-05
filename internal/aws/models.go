@@ -16,14 +16,18 @@ type AWSConfig struct {
 	logger              brainsConfig.SimpleLogger
 }
 
+type ResponseMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type ResponseChoice struct {
+	Message ResponseMessage `json:"message"`
+}
+
 type ChatResponse struct {
-	Choices []struct {
-		Message struct {
-			Role    string `json:"role"`
-			Content string `json:"content"`
-		} `json:"message"`
-	} `json:"choices"`
-	Usage map[string]any
+	Choices []ResponseChoice `json:"choices"`
+	Usage   map[string]any
 }
 
 type BedrockSource struct {

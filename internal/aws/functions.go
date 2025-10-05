@@ -15,7 +15,7 @@ import (
 )
 
 func (a *AWSConfig) DescribeModel(model string) *types.FoundationModelSummary {
-	client := a.getInvoker()
+	client := a.GetInvoker()
 	out, err := client.ListFoundationModels(context.Background(),
 		&bedrock.ListFoundationModelsInput{})
 	if err != nil {
@@ -32,7 +32,7 @@ func (a *AWSConfig) DescribeModel(model string) *types.FoundationModelSummary {
 }
 
 func (a *AWSConfig) CallAWSBedrock(ctx context.Context, modelID string, req BedrockRequest) ([]byte, error) {
-	client := a.getInvoker()
+	client := a.GetInvoker()
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal Bedrock request: %w", err)
@@ -55,7 +55,7 @@ func (a *AWSConfig) CallAWSBedrock(ctx context.Context, modelID string, req Bedr
 }
 
 func (a *AWSConfig) CallAWSBedrockConverse(ctx context.Context, modelID string, req BedrockRequest) ([]byte, error) {
-	client := a.getInvoker()
+	client := a.GetInvoker()
 
 	var messages []bedrockruntimeTypes.Message
 	for _, m := range req.Messages {
