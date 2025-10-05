@@ -20,6 +20,7 @@ type mockInvoker struct {
 	mock.Mock
 }
 
+// Implements InvokeModel for the classic API.
 func (m *mockInvoker) InvokeModel(ctx context.Context, input *bedrockruntime.InvokeModelInput) (*bedrockruntime.InvokeModelOutput, error) {
 	args := m.Called(ctx, input)
 	if out := args.Get(0); out != nil {
@@ -28,6 +29,7 @@ func (m *mockInvoker) InvokeModel(ctx context.Context, input *bedrockruntime.Inv
 	return nil, args.Error(1)
 }
 
+// Implements ListFoundationModels for model discovery.
 func (m *mockInvoker) ListFoundationModels(ctx context.Context, input *bedrock.ListFoundationModelsInput) (*bedrock.ListFoundationModelsOutput, error) {
 	args := m.Called(ctx, input)
 	if out := args.Get(0); out != nil {
@@ -36,6 +38,16 @@ func (m *mockInvoker) ListFoundationModels(ctx context.Context, input *bedrock.L
 	return nil, args.Error(1)
 }
 
+// Implements ConverseModel for the newer Converse API.
+func (m *mockInvoker) ConverseModel(ctx context.Context, input *bedrockruntime.ConverseInput) (*bedrockruntime.ConverseOutput, error) {
+	args := m.Called(ctx, input)
+	if out := args.Get(0); out != nil {
+		return out.(*bedrockruntime.ConverseOutput), args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
+// testLogger satisfies the SimpleLogger interface used by AWSConfig.
 type testLogger struct{}
 
 func (l *testLogger) LogMessage(string)     {}

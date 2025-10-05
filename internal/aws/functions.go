@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/bedrock"
 	"github.com/aws/aws-sdk-go-v2/service/bedrock/types"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
+	bedrockruntimeTypes "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 	"github.com/charmbracelet/glamour"
 	"github.com/pterm/pterm"
 	"github.com/sergi/go-diff/diffmatchpatch"
@@ -39,6 +40,7 @@ Return JSON in this format:
 type BedrockInvoker interface {
 	InvokeModel(ctx context.Context, input *bedrockruntime.InvokeModelInput) (*bedrockruntime.InvokeModelOutput, error)
 	ListFoundationModels(ctx context.Context, input *bedrock.ListFoundationModelsInput) (*bedrock.ListFoundationModelsOutput, error)
+	ConverseModel(ctx context.Context, input *bedrockruntime.ConverseInput) (*bedrockruntime.ConverseOutput, error)
 }
 
 type clientInvoker struct {
@@ -52,6 +54,10 @@ func (c *clientInvoker) InvokeModel(ctx context.Context, input *bedrockruntime.I
 
 func (c *clientInvoker) ListFoundationModels(ctx context.Context, input *bedrock.ListFoundationModelsInput) (*bedrock.ListFoundationModelsOutput, error) {
 	return c.bedrockClient.ListFoundationModels(ctx, input)
+}
+
+func (c *clientInvoker) ConverseModel(ctx context.Context, input *bedrockruntime.ConverseInput) (*bedrockruntime.ConverseOutput, error) {
+	return c.bedrockruntimeClient.Converse(ctx, input)
 }
 
 func (a *AWSConfig) SetInvoker(invoker BedrockInvoker) {
@@ -105,6 +111,51 @@ func (a *AWSConfig) CallAWSBedrock(ctx context.Context, modelID string, req Bedr
 	}
 	spinner.Success()
 	return resp.Body, nil
+}
+
+func (a *AWSConfig) CallAWSBedrockConverse(ctx context.Context, modelID string, req BedrockRequest) ([]byte, error) {
+	client := a.getInvoker()
+
+	var messages []bedrockruntimeTypes.Message
+	for _, m := range req.Messages {
+		var content bedrockruntimeTypes.ContentBlockMemberText
+		if len(m.Content) > 0 && m.Content[0].Type == "text" {
+			content = bedrockruntimeTypes.ContentBlockMemberText{
+				Value: m.Content[0].Text,
+			}
+		}
+		message := bedrockruntimeTypes.Message{
+			Content: []bedrockruntimeTypes.ContentBlock{&content},
+			Role:    bedrockruntimeTypes.ConversationRole(m.Role),
+		}
+		messages = append(messages, message)
+	}
+
+	input := &bedrockruntime.ConverseInput{
+		ModelId:  aws.String(modelID),
+		Messages: messages,
+	}
+
+	spinner, _ := pterm.DefaultSpinner.Start("Loading response from AWS Bedrock (Converse)")
+	resp, err := client.ConverseModel(ctx, input)
+	if err != nil {
+		spinner.Fail()
+		return nil, err
+	}
+	spinner.Success()
+
+	responseText, ok := resp.Output.(*bedrockruntimeTypes.ConverseOutputMemberMessage)
+	if !ok {
+		return nil, fmt.Errorf("unexpected response type")
+	}
+	if len(responseText.Value.Content) == 0 {
+		return nil, fmt.Errorf("empty response content")
+	}
+	text, ok := responseText.Value.Content[0].(*bedrockruntimeTypes.ContentBlockMemberText)
+	if !ok {
+		return nil, fmt.Errorf("unexpected content type")
+	}
+	return []byte(text.Value), nil
 }
 
 func (a *AWSConfig) printCost(usage map[string]any) {
@@ -238,7 +289,7 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 		return false
 	}
 	pterm.Info.Printf("will edit files in place for those listed above\n")
-	result, _ := pterm.DefaultInteractiveConfirm.Show()
+	result, _ := pterm.DefaultInteractiveConfirm.WithDefaultText("Continue with file edits?").Show()
 	if !result {
 		pterm.Warning.Printf("refused to continue, breaking early")
 		return false
@@ -266,9 +317,9 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 		},
 	}
 
-	respBody, err := a.CallAWSBedrock(ctx, a.defaultBedrockModel, req)
+	respBody, err := a.CallAWSBedrockConverse(ctx, a.defaultBedrockModel, req)
 	if err != nil {
-		pterm.Error.Printf("InvokeModel error: %v\n", err)
+		pterm.Error.Printf("Converse error: %v\n", err)
 		return false
 	}
 	var data ChatResponse
@@ -283,16 +334,8 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 
 	a.logger.LogMessage("[RESPONSE FOR CODE] " + data.Choices[0].Message.Content)
 
-	extractedJSON, err := extractJSON(data.Choices[0].Message.Content)
-	if err != nil {
-		pterm.Error.Printf("Unable to process json from values provided: %v", err)
-		return false
-	}
-
 	var updates CodeModelResponse
-
-	err = json.Unmarshal([]byte(extractedJSON), &updates)
-	if err != nil {
+	if err := json.Unmarshal([]byte(data.Choices[0].Message.Content), &updates); err != nil {
 		pterm.Error.Printf("Json Unmarshal error (when parsing codeModelUpdates Body): %v\n", err)
 		return false
 	}
@@ -311,7 +354,7 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 		renderedDiff, _ := r.Render(fmt.Sprintf("diff\n%s\n", diffText))
 		fmt.Println(renderedDiff)
 
-		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText("Apply this change?").Show()
+		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText(fmt.Sprintf("Apply changes to %s?", update.Path)).Show()
 		if !ok {
 			pterm.Warning.Printfln("Skipped: %s", update.Path)
 			continue
@@ -327,7 +370,7 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 	for addIdx, add := range updates.AddCodeFiles {
 		pterm.Info.Printfln("Adding new file: %s (%d/%d)", add.Path, addIdx+1, len(updates.AddCodeFiles))
 
-		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText("Create this file?").Show()
+		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText(fmt.Sprintf("Create file %s?", add.Path)).Show()
 		if !ok {
 			pterm.Warning.Printfln("Skipped creation of: %s", add.Path)
 			continue
@@ -354,7 +397,7 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 	for remIdx, rem := range updates.RemoveCodeFiles {
 		pterm.Info.Printfln("Removing file: %s (%d/%d)", rem.Path, remIdx+1, len(updates.RemoveCodeFiles))
 
-		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText("Delete this file?").Show()
+		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText(fmt.Sprintf("Delete file %s?", rem.Path)).Show()
 		if !ok {
 			pterm.Warning.Printfln("Skipped deletion of: %s", rem.Path)
 			continue
@@ -363,7 +406,6 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 		oldContentBytes, readErr := os.ReadFile(rem.Path)
 		if readErr != nil {
 			pterm.Error.Printfln("Failed to read %s for diff: %v", rem.Path, readErr)
-			// Proceed with deletion even if we couldn't read the file
 		} else {
 			dmp := diffmatchpatch.New()
 			diffs := dmp.DiffMain(string(oldContentBytes), "", false)
