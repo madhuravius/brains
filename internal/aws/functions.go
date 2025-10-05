@@ -16,27 +16,6 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
-const CoderPromptPostProcess = `
-You are a code-editing assistant.
-
-Evaluate the most recent recommendations in the context provided. These should be implemented in code now.
-
-Return **only JSON** describing the changes, no explanations.
-
-Return JSON in this format:
-{
-  "code_updates": [
-    {"path": "example_file_name.go", "old_code": "...", "new_code": "..."}
-  ],
-    "add_code_files": [
-    {"path": "new_file.go", "content": "..."}
-  ],
-    "remove_code_files": [
-    {"path": "old_file.go"}
-  ]
-}
-`
-
 type BedrockInvoker interface {
 	InvokeModel(ctx context.Context, input *bedrockruntime.InvokeModelInput) (*bedrockruntime.InvokeModelOutput, error)
 	ListFoundationModels(ctx context.Context, input *bedrock.ListFoundationModelsInput) (*bedrock.ListFoundationModelsOutput, error)
@@ -151,9 +130,15 @@ func (a *AWSConfig) CallAWSBedrockConverse(ctx context.Context, modelID string, 
 	if len(responseText.Value.Content) == 0 {
 		return nil, fmt.Errorf("empty response content")
 	}
-	text, ok := responseText.Value.Content[0].(*bedrockruntimeTypes.ContentBlockMemberText)
-	if !ok {
-		return nil, fmt.Errorf("unexpected content type")
+	var text *bedrockruntimeTypes.ContentBlockMemberText
+	for _, responseBlock := range responseText.Value.Content {
+		text, ok = responseBlock.(*bedrockruntimeTypes.ContentBlockMemberText)
+		if !ok {
+			continue
+		}
+	}
+	if text == nil {
+		return nil, fmt.Errorf("empty response content (no text)")
 	}
 	return []byte(text.Value), nil
 }
@@ -322,26 +307,16 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 		pterm.Error.Printf("Converse error: %v\n", err)
 		return false
 	}
-	var data ChatResponse
+	a.logger.LogMessage("[RESPONSE FOR CODE] " + string(respBody))
+
+	var data CodeModelResponse
 	if err := json.Unmarshal(respBody, &data); err != nil {
 		pterm.Error.Printf("Json Unmarshal error (when parsing Bedrock Body): %v\n", err)
 		return false
 	}
-	if len(data.Choices) == 0 {
-		pterm.Error.Printf("On JSON Response for code updates did not get sufficient response")
-		return false
-	}
 
-	a.logger.LogMessage("[RESPONSE FOR CODE] " + data.Choices[0].Message.Content)
-
-	var updates CodeModelResponse
-	if err := json.Unmarshal([]byte(data.Choices[0].Message.Content), &updates); err != nil {
-		pterm.Error.Printf("Json Unmarshal error (when parsing codeModelUpdates Body): %v\n", err)
-		return false
-	}
-
-	for updateIdx, update := range updates.CodeUpdates {
-		pterm.Info.Printfln("Updating file: %s (%d/%d)", update.Path, updateIdx+1, len(updates.CodeUpdates))
+	for updateIdx, update := range data.CodeUpdates {
+		pterm.Info.Printfln("Updating file: %s (%d/%d)", update.Path, updateIdx+1, len(data.CodeUpdates))
 
 		dmp := diffmatchpatch.New()
 		diffs := dmp.DiffMain(update.OldCode, update.NewCode, false)
@@ -367,8 +342,8 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 		pterm.Success.Printfln("Updated %s successfully", update.Path)
 	}
 
-	for addIdx, add := range updates.AddCodeFiles {
-		pterm.Info.Printfln("Adding new file: %s (%d/%d)", add.Path, addIdx+1, len(updates.AddCodeFiles))
+	for addIdx, add := range data.AddCodeFiles {
+		pterm.Info.Printfln("Adding new file: %s (%d/%d)", add.Path, addIdx+1, len(data.AddCodeFiles))
 
 		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText(fmt.Sprintf("Create file %s?", add.Path)).Show()
 		if !ok {
@@ -394,8 +369,8 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 		pterm.Success.Printfln("Created %s successfully", add.Path)
 	}
 
-	for remIdx, rem := range updates.RemoveCodeFiles {
-		pterm.Info.Printfln("Removing file: %s (%d/%d)", rem.Path, remIdx+1, len(updates.RemoveCodeFiles))
+	for remIdx, rem := range data.RemoveCodeFiles {
+		pterm.Info.Printfln("Removing file: %s (%d/%d)", rem.Path, remIdx+1, len(data.RemoveCodeFiles))
 
 		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText(fmt.Sprintf("Delete file %s?", rem.Path)).Show()
 		if !ok {
@@ -425,9 +400,6 @@ func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool 
 		}
 		pterm.Success.Printfln("Deleted %s successfully", rem.Path)
 	}
-
-	a.printCost(data.Usage)
-	a.printContext(data.Usage)
 
 	return true
 }
