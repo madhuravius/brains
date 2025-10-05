@@ -1,5 +1,6 @@
 ## Default target displays help
 .DEFAULT_GOAL := help
+GOBIN ?= $$(go env GOBIN)
 
 # Targets
 help: ## Show this help message
@@ -24,15 +25,17 @@ build: ## Compile the binary into ./build/brains
 .PHONY: build
 
 tools: ## Install auxiliary dev tools (gotestsum)
+	go install github.com/vladopajic/go-test-coverage/v2@latest
 	go install gotest.tools/gotestsum@latest
 .PHONY: tools
 
-lint: ## Run golangci‑lint over the codebase
+lint: tools ## Run golangci‑lint over the codebase
 	golangci-lint run
 .PHONY: lint
 
 test: tools ## Execute unit tests with coverage
 	go run gotest.tools/gotestsum@latest --format testname -- -coverprofile=cover.out ./...
+	${GOBIN}/go-test-coverage --config=./.testcoverage.yml
 .PHONY: test
 
 pretty: ## Run gofmt to format source files
