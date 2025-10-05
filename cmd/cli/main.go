@@ -17,6 +17,25 @@ type CLIConfig struct {
 	glob         string
 }
 
+func generateCommonFlags(cliConfig *CLIConfig, cfg *config.BrainsConfig) []cli.Flag {
+	return []cli.Flag{
+		&cli.StringFlag{
+			Aliases:     []string{"p"},
+			Name:        "persona",
+			Value:       cfg.DefaultPersona,
+			Usage:       "Supply a persona with a corresponding value in \".brains.yml\" to use as part of the prompt.",
+			Destination: &cliConfig.persona,
+		},
+		&cli.StringFlag{
+			Aliases:     []string{"a"},
+			Name:        "add",
+			Value:       cfg.DefaultContext,
+			Usage:       "Supply a glob pattern to add to the context",
+			Destination: &cliConfig.glob,
+		},
+	}
+}
+
 func main() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -27,7 +46,7 @@ func main() {
 	awsConfig := aws.NewAWSConfig(cfg.Model, cfg.AWSRegion)
 	awsConfig.SetLogger(cfg)
 
-	cliConfig := CLIConfig{
+	cliConfig := &CLIConfig{
 		awsConfig:    awsConfig,
 		brainsConfig: cfg,
 	}
@@ -49,29 +68,47 @@ func main() {
 						pterm.Error.Println("unable to access bedrock")
 						os.Exit(1)
 					}
-					pterm.Success.Println("Health check complete")
+					pterm.Success.Println("health check complete")
 					return nil
 				},
 			},
 			{
 				Name:  "ask",
 				Usage: "send a prompt to the Bedrock model and display the response",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Aliases:     []string{"p"},
-						Name:        "persona",
-						Value:       "default",
-						Usage:       "Supply a persona with a corresponding value in \".brains.yml\" to use as part of the prompt.",
-						Destination: &cliConfig.persona,
-					},
-					&cli.StringFlag{
-						Aliases:     []string{"a"},
-						Name:        "add",
-						Value:       "",
-						Usage:       "Supply a glob pattern to add to the context",
-						Destination: &cliConfig.glob,
-					},
+				Flags: generateCommonFlags(cliConfig, cfg),
+				Action: func(c *cli.Context) error {
+					prompt := c.Args().Get(0)
+					if prompt == "" {
+						textInput := pterm.DefaultInteractiveTextInput.WithMultiLine()
+						prompt, _ = textInput.Show()
+					}
+					if !cliConfig.awsConfig.SetAndValidateCredentials() {
+						pterm.Error.Println("unable to validate credentials")
+						os.Exit(1)
+					}
+					personaInstructions := cliConfig.brainsConfig.GetPersonaInstructions(cliConfig.persona)
+					addedContext := ""
+					if cliConfig.glob != "" {
+						var err error
+						addedContext, err = cliConfig.brainsConfig.SetContextFromGlob(cliConfig.glob)
+						if err != nil {
+							pterm.Error.Printfln("failed to read glob pattern for context: %v", err)
+							os.Exit(1)
+						}
+					}
+					if !cliConfig.awsConfig.Ask(prompt, personaInstructions, addedContext) {
+						pterm.Error.Println("failed to get response from Bedrock")
+						os.Exit(1)
+					}
+
+					pterm.Success.Println("question answered")
+					return nil
 				},
+			},
+			{
+				Name:  "code",
+				Usage: "send a prompt to the Bedrock model and execute coding actions",
+				Flags: generateCommonFlags(cliConfig, cfg),
 				Action: func(c *cli.Context) error {
 					prompt := c.Args().Get(0)
 					if prompt == "" {
@@ -93,12 +130,11 @@ func main() {
 						}
 
 					}
-					if !cliConfig.awsConfig.Ask(prompt, personaInstructions, addedContext) {
-						pterm.Error.Println("failed to get response from Bedrock")
-						os.Exit(1)
+					if !cliConfig.awsConfig.Code(prompt, personaInstructions, addedContext) {
+						os.Exit(0)
 					}
 
-					pterm.Success.Println("Question answered.")
+					pterm.Success.Println("code execution complete")
 					return nil
 				},
 			},
@@ -107,7 +143,7 @@ func main() {
 				Usage: "print all logs",
 				Action: func(c *cli.Context) error {
 					cliConfig.brainsConfig.PrintLogs()
-					pterm.Success.Println("Logs printed.")
+					pterm.Success.Println("logs printed")
 					return nil
 				},
 			},
@@ -119,7 +155,7 @@ func main() {
 						pterm.Error.Printfln("reset failed: %v", err)
 						return err
 					}
-					pterm.Success.Println("Logs cleared.")
+					pterm.Success.Println("logs cleared")
 					return nil
 				},
 			},

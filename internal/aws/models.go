@@ -57,3 +57,13 @@ type BedrockRequest struct {
 	ToolChoice       *BedrockToolChoice `json:"tool_choice,omitempty"`
 	StopSequences    []string           `json:"stop_sequences,omitempty"`
 }
+
+type CodeUpdate struct {
+	Path    string `json:"path"`
+	OldCode string `json:"old_code"`
+	NewCode string `json:"new_code"`
+}
+
+type CodeModelResponse struct {
+	CodeUpdates []CodeUpdate `json:"code_updates"`
+}

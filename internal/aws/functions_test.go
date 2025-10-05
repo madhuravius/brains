@@ -36,6 +36,11 @@ func (m *mockInvoker) ListFoundationModels(ctx context.Context, input *bedrock.L
 	return nil, args.Error(1)
 }
 
+type testLogger struct{}
+
+func (l *testLogger) LogMessage(string)     {}
+func (l *testLogger) GetLogContext() string { return "" }
+
 func TestCallAWSBedrockSuccess(t *testing.T) {
 	cfg := &aws.AWSConfig{}
 	invokerMock := &mockInvoker{}
@@ -84,6 +89,8 @@ func TestValidateBedrockConfigurationSuccess(t *testing.T) {
 	invokerMock := &mockInvoker{}
 	cfg.SetInvoker(invokerMock)
 
+	cfg.SetLogger(&testLogger{})
+
 	response := aws.ChatResponse{
 		Choices: []struct {
 			Message struct {
@@ -130,6 +137,8 @@ func TestAskSuccess(t *testing.T) {
 	cfg := &aws.AWSConfig{}
 	invokerMock := &mockInvoker{}
 	cfg.SetInvoker(invokerMock)
+
+	cfg.SetLogger(&testLogger{})
 
 	response := aws.ChatResponse{
 		Choices: []struct {

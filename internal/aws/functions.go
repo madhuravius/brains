@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/bedrock"
@@ -11,7 +12,23 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
 	"github.com/charmbracelet/glamour"
 	"github.com/pterm/pterm"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
+
+const CoderPromptPostProcess = `
+You are a code-editing assistant.
+
+Evaluate the most recent recommendations in the context provided. These should be implemented in code now.
+
+Return **only JSON** describing the changes, no explanations.
+
+Return JSON in this format:
+{
+  "code_updates": [
+    {"path": "example_file_name.go", "old_code": "...", "new_code": "..."}
+  ]
+}
+`
 
 type BedrockInvoker interface {
 	InvokeModel(ctx context.Context, input *bedrockruntime.InvokeModelInput) (*bedrockruntime.InvokeModelOutput, error)
@@ -128,7 +145,6 @@ func (a *AWSConfig) printBedrockMessage(content string) {
 	fmt.Println(result)
 }
 
-// ValidateBedrockConfiguration performs a lightweight health‑check against the Bedrock model.
 func (a *AWSConfig) ValidateBedrockConfiguration() bool {
 	ctx := context.Background()
 	simpleReq := BedrockRequest{
@@ -144,9 +160,7 @@ func (a *AWSConfig) ValidateBedrockConfiguration() bool {
 			},
 		},
 	}
-	if a.logger != nil {
-		a.logger.LogMessage("[REQUEST] health‑check prompt")
-	}
+	a.logger.LogMessage("[REQUEST] health‑check prompt")
 	respBody, err := a.CallAWSBedrock(ctx, a.defaultBedrockModel, simpleReq)
 	if err != nil {
 		pterm.Error.Printf("InvokeModel error: %v\n", err)
@@ -159,32 +173,24 @@ func (a *AWSConfig) ValidateBedrockConfiguration() bool {
 	}
 	for _, choice := range data.Choices {
 		a.printBedrockMessage(choice.Message.Content)
-		if a.logger != nil {
-			a.logger.LogMessage("[RESPONSE] " + choice.Message.Content)
-		}
+		a.logger.LogMessage("[RESPONSE] " + choice.Message.Content)
 	}
 	a.printCost(data.Usage)
 	a.printContext(data.Usage)
 	return true
 }
 
-// Ask sends a prompt (optionally prefixed with log context and persona instructions) to Bedrock.
 func (a *AWSConfig) Ask(prompt, personaInstructions, addedContext string) bool {
 	ctx := context.Background()
 	promptToSendBedrock := prompt
-	if a.logger != nil {
-		if logCtx := a.logger.GetLogContext(); logCtx != "" {
-			promptToSendBedrock = fmt.Sprintf("%s\n\n%s", logCtx, prompt)
-		}
+	if logCtx := a.logger.GetLogContext(); logCtx != "" {
+		promptToSendBedrock = fmt.Sprintf("%s\n\n%s", logCtx, prompt)
 	}
 	if personaInstructions != "" {
 		prompt = fmt.Sprintf("%s%s", personaInstructions, prompt)
 	}
-	if a.logger != nil {
-		a.logger.LogMessage("[REQUEST] " + prompt)
-	}
+	a.logger.LogMessage("[REQUEST] " + prompt)
 
-	// do not update prompt in place as this will inflate the log
 	if addedContext != "" {
 		promptToSendBedrock = fmt.Sprintf("%s%s", prompt, addedContext)
 	}
@@ -213,12 +219,108 @@ func (a *AWSConfig) Ask(prompt, personaInstructions, addedContext string) bool {
 		return false
 	}
 	for _, choice := range data.Choices {
-		if a.logger != nil {
-			a.logger.LogMessage("[RESPONSE] " + choice.Message.Content)
-		}
+		a.logger.LogMessage("[RESPONSE] " + choice.Message.Content)
 		a.printBedrockMessage(choice.Message.Content)
 	}
 	a.printCost(data.Usage)
 	a.printContext(data.Usage)
+	return true
+}
+
+func (a *AWSConfig) Code(prompt, personaInstructions, addedContext string) bool {
+	if !a.Ask(prompt, personaInstructions, addedContext) {
+		return false
+	}
+	pterm.Info.Printf("will edit files in place for those listed above\n")
+	result, _ := pterm.DefaultInteractiveConfirm.Show()
+	if !result {
+		pterm.Warning.Printf("refused to continue, breaking early")
+		return false
+	}
+
+	promptToSendBedrock := ""
+
+	ctx := context.Background()
+	promptToSendBedrock += addedContext
+	if logCtx := a.logger.GetLogContext(); logCtx != "" {
+		promptToSendBedrock += fmt.Sprintf("%s\n\n%s", logCtx, CoderPromptPostProcess)
+	}
+
+	req := BedrockRequest{
+		Messages: []BedrockMessage{
+			{
+				Role: "user",
+				Content: []BedrockContent{
+					{
+						Type: "text",
+						Text: promptToSendBedrock,
+					},
+				},
+			},
+		},
+	}
+
+	respBody, err := a.CallAWSBedrock(ctx, a.defaultBedrockModel, req)
+	if err != nil {
+		pterm.Error.Printf("InvokeModel error: %v\n", err)
+		return false
+	}
+	var data ChatResponse
+	if err := json.Unmarshal(respBody, &data); err != nil {
+		pterm.Error.Printf("Json Unmarshal error (when parsing Bedrock Body): %v\n", err)
+		return false
+	}
+	if len(data.Choices) == 0 {
+		pterm.Error.Printf("On JSON Response for code updates did not get sufficient response")
+		return false
+	}
+
+	a.logger.LogMessage("[RESPONSE FOR CODE] " + data.Choices[0].Message.Content)
+
+	extractedJSON, err := extractJSON(data.Choices[0].Message.Content)
+	if err != nil {
+		pterm.Error.Printf("Unable to process json from values provided: %v", err)
+		return false
+	}
+
+	var updates CodeModelResponse
+	err = json.Unmarshal([]byte(extractedJSON), &updates)
+	if err != nil {
+		pterm.Error.Printf("Json Unmarshal error (when parsing codeModelUpdates Body): %v\n", err)
+		return false
+	}
+
+	for updateIdx, update := range updates.CodeUpdates {
+		pterm.Info.Printfln("Updating file: %s (%d/%d)", update.Path, updateIdx, len(updates.CodeUpdates))
+
+		dmp := diffmatchpatch.New()
+		diffs := dmp.DiffMain(update.OldCode, update.NewCode, false)
+		diffText := dmp.DiffPrettyText(diffs)
+
+		r, _ := glamour.NewTermRenderer(
+			glamour.WithAutoStyle(),
+			glamour.WithWordWrap(100),
+		)
+		renderedDiff, _ := r.Render(fmt.Sprintf("```diff\n%s\n```", diffText))
+		fmt.Println(renderedDiff)
+
+		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText("Apply this change?").Show()
+		if !ok {
+			pterm.Warning.Printfln("Skipped: %s", update.Path)
+			continue
+		}
+
+		err := os.WriteFile(update.Path, []byte(update.NewCode), 0644)
+		if err != nil {
+			pterm.Error.Printfln("Failed to write %s: %v", update.Path, err)
+			continue
+		}
+
+		pterm.Success.Printfln("Updated %s successfully", update.Path)
+	}
+
+	a.printCost(data.Usage)
+	a.printContext(data.Usage)
+
 	return true
 }

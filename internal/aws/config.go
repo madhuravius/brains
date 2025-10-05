@@ -49,7 +49,7 @@ func (a *AWSConfig) SetAndValidateCredentials() bool {
 		pterm.Error.Printf("credentials invalid: %s\n", err.Error())
 		return false
 	}
-	pterm.Info.Println("Valid credentials")
+	pterm.Info.Println("valid credentials")
 	return true
 }
 
