@@ -93,16 +93,7 @@ func main() {
 						os.Exit(1)
 					}
 					personaInstructions := cliConfig.brainsConfig.GetPersonaInstructions(cliConfig.persona)
-					addedContext := ""
-					if cliConfig.glob != "" {
-						var err error
-						addedContext, err = cliConfig.brainsConfig.SetContextFromGlob(cliConfig.glob)
-						if err != nil {
-							pterm.Error.Printfln("failed to read glob pattern for context: %v", err)
-							os.Exit(1)
-						}
-					}
-					if !cliConfig.coreConfig.Ask(prompt, personaInstructions, cliConfig.brainsConfig.Model, addedContext) {
+					if !cliConfig.coreConfig.Ask(prompt, personaInstructions, cliConfig.brainsConfig.Model, cliConfig.glob) {
 						pterm.Error.Println("failed to get response from Bedrock")
 						os.Exit(1)
 					}
@@ -126,17 +117,7 @@ func main() {
 						os.Exit(1)
 					}
 					personaInstructions := cliConfig.brainsConfig.GetPersonaInstructions(cliConfig.persona)
-					addedContext := ""
-					if cliConfig.glob != "" {
-						var err error
-						addedContext, err = cliConfig.brainsConfig.SetContextFromGlob(cliConfig.glob)
-						if err != nil {
-							pterm.Error.Printfln("failed to read glob pattern for context: %v", err)
-							os.Exit(1)
-						}
-
-					}
-					if !cliConfig.coreConfig.Code(prompt, personaInstructions, cliConfig.brainsConfig.Model, addedContext) {
+					if !cliConfig.coreConfig.Code(prompt, personaInstructions, cliConfig.brainsConfig.Model, cliConfig.glob) {
 						os.Exit(0)
 					}
 

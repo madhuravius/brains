@@ -4,16 +4,26 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 
-	"github.com/charmbracelet/glamour"
 	"github.com/pterm/pterm"
-	"github.com/sergi/go-diff/diffmatchpatch"
 
 	"brains/internal/aws"
 )
 
-func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, addedContext string) bool {
+func (c *CoreConfig) enrichWithGlob(glob string) (string, error) {
+	addedContext := ""
+	if glob != "" {
+		var err error
+		addedContext, err = c.agentsConfig.fsAgentConfig.SetContextFromGlob(glob)
+		if err != nil {
+			pterm.Error.Printfln("failed to read glob pattern for context: %v", err)
+			return "", err
+		}
+	}
+	return addedContext, nil
+}
+
+func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool {
 	ctx := context.Background()
 	promptToSendBedrock := prompt
 	if logCtx := c.logger.GetLogContext(); logCtx != "" {
@@ -24,6 +34,10 @@ func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, addedContext stri
 	}
 	c.logger.LogMessage("[REQUEST] " + prompt)
 
+	addedContext, err := c.enrichWithGlob(glob)
+	if err != nil {
+		return false
+	}
 	if addedContext != "" {
 		promptToSendBedrock = fmt.Sprintf("%s%s", prompt, addedContext)
 	}
@@ -60,8 +74,9 @@ func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, addedContext stri
 	return true
 }
 
-func (c *CoreConfig) Code(prompt, personaInstructions, modelID, addedContext string) bool {
-	if !c.Ask(prompt, personaInstructions, modelID, addedContext) {
+func (c *CoreConfig) Code(prompt, personaInstructions, modelID, glob string) bool {
+	ctx := context.Background()
+	if !c.Ask(prompt, personaInstructions, modelID, glob) {
 		return false
 	}
 	pterm.Info.Printf("will edit files in place for those listed above\n")
@@ -72,8 +87,10 @@ func (c *CoreConfig) Code(prompt, personaInstructions, modelID, addedContext str
 	}
 
 	promptToSendBedrock := ""
-
-	ctx := context.Background()
+	addedContext, err := c.enrichWithGlob(glob)
+	if err != nil {
+		return false
+	}
 	promptToSendBedrock += addedContext
 	if logCtx := c.logger.GetLogContext(); logCtx != "" {
 		promptToSendBedrock += fmt.Sprintf("%s\n\n%s", logCtx, CoderPromptPostProcess)
@@ -109,55 +126,23 @@ func (c *CoreConfig) Code(prompt, personaInstructions, modelID, addedContext str
 	for updateIdx, update := range data.CodeUpdates {
 		pterm.Info.Printfln("Updating file: %s (%d/%d)", update.Path, updateIdx+1, len(data.CodeUpdates))
 
-		dmp := diffmatchpatch.New()
-		diffs := dmp.DiffMain(update.OldCode, update.NewCode, false)
-		diffText := dmp.DiffPrettyText(diffs)
-
-		r, _ := glamour.NewTermRenderer(
-			glamour.WithAutoStyle(),
-			glamour.WithWordWrap(100),
-		)
-		renderedDiff, _ := r.Render(fmt.Sprintf("diff\n%s\n", diffText))
-		fmt.Println(renderedDiff)
-
-		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText(fmt.Sprintf("Apply changes to %s?", update.Path)).Show()
-		if !ok {
-			pterm.Warning.Printfln("Skipped: %s", update.Path)
-			continue
+		if _, err := c.agentsConfig.fsAgentConfig.UpdateFile(update.Path, update.OldCode, update.NewCode, true); err != nil {
+			pterm.Error.Printfln("Failed to update %s: %v", update.Path, err)
+			return false
 		}
-
-		if err := os.WriteFile(update.Path, []byte(update.NewCode), 0644); err != nil {
-			pterm.Error.Printfln("Failed to write %s: %v", update.Path, err)
-			continue
-		}
-		pterm.Success.Printfln("Updated %s successfully", update.Path)
 	}
 
 	for addIdx, add := range data.AddCodeFiles {
 		pterm.Info.Printfln("Adding new file: %s (%d/%d)", add.Path, addIdx+1, len(data.AddCodeFiles))
-
 		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText(fmt.Sprintf("Create file %s?", add.Path)).Show()
 		if !ok {
 			pterm.Warning.Printfln("Skipped creation of: %s", add.Path)
 			continue
 		}
-
-		dmp := diffmatchpatch.New()
-		diffs := dmp.DiffMain("", add.Content, false)
-		diffText := dmp.DiffPrettyText(diffs)
-
-		r, _ := glamour.NewTermRenderer(
-			glamour.WithAutoStyle(),
-			glamour.WithWordWrap(100),
-		)
-		renderedDiff, _ := r.Render(fmt.Sprintf("diff\n%s\n", diffText))
-		fmt.Println(renderedDiff)
-
-		if err := os.WriteFile(add.Path, []byte(add.Content), 0644); err != nil {
-			pterm.Error.Printfln("Failed to create %s: %v", add.Path, err)
-			continue
+		if err := c.agentsConfig.fsAgentConfig.CreateFile(add.Path, add.Content); err != nil {
+			pterm.Error.Printfln("Failed to write %s: %v", add.Path, err)
+			return false
 		}
-		pterm.Success.Printfln("Created %s successfully", add.Path)
 	}
 
 	for remIdx, rem := range data.RemoveCodeFiles {
@@ -168,28 +153,10 @@ func (c *CoreConfig) Code(prompt, personaInstructions, modelID, addedContext str
 			pterm.Warning.Printfln("Skipped deletion of: %s", rem.Path)
 			continue
 		}
-
-		oldContentBytes, readErr := os.ReadFile(rem.Path)
-		if readErr != nil {
-			pterm.Error.Printfln("Failed to read %s for diff: %v", rem.Path, readErr)
-		} else {
-			dmp := diffmatchpatch.New()
-			diffs := dmp.DiffMain(string(oldContentBytes), "", false)
-			diffText := dmp.DiffPrettyText(diffs)
-
-			r, _ := glamour.NewTermRenderer(
-				glamour.WithAutoStyle(),
-				glamour.WithWordWrap(100),
-			)
-			renderedDiff, _ := r.Render(fmt.Sprintf("diff\n%s\n", diffText))
-			fmt.Println(renderedDiff)
+		if err := c.agentsConfig.fsAgentConfig.DeleteFile(rem.Path); err != nil {
+			pterm.Error.Printfln("Failed to write %s: %v", rem.Path, err)
+			return false
 		}
-
-		if err := os.Remove(rem.Path); err != nil {
-			pterm.Error.Printfln("Failed to delete %s: %v", rem.Path, err)
-			continue
-		}
-		pterm.Success.Printfln("Deleted %s successfully", rem.Path)
 	}
 
 	return true

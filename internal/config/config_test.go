@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -45,45 +44,4 @@ func TestGetPersonaInstructions(t *testing.T) {
 
 	empty := b.GetPersonaInstructions("nonexistent")
 	assert.Empty(t, empty)
-}
-
-func TestSetContextFromGlob(t *testing.T) {
-	tmpDir := t.TempDir()
-	file1 := filepath.Join(tmpDir, "a.txt")
-	file2 := filepath.Join(tmpDir, "b.txt")
-	_ = os.WriteFile(file1, []byte("content A"), 0o600)
-	_ = os.WriteFile(file2, []byte("content B"), 0o600)
-
-	b := &config.BrainsConfig{}
-
-	origWD, _ := os.Getwd()
-	defer func() { _ = os.Chdir(origWD) }()
-	_ = os.Chdir(tmpDir)
-
-	ctx, err := b.SetContextFromGlob("*.txt")
-	assert.NoError(t, err)
-
-	var result map[string]string
-	err = json.Unmarshal([]byte(ctx), &result)
-	assert.NoError(t, err)
-
-	assert.Len(t, result, 2)
-	assert.Equal(t, "content A", result["a.txt"])
-	assert.Equal(t, "content B", result["b.txt"])
-}
-
-func TestSetContextFromGlobInvalidPattern(t *testing.T) {
-	b := &config.BrainsConfig{}
-	_, err := b.SetContextFromGlob("[")
-	assert.Error(t, err)
-}
-
-func TestSetContextFromGlobFileReadError(t *testing.T) {
-	tmpDir := t.TempDir()
-	dirPath := filepath.Join(tmpDir, "subdir")
-	_ = os.Mkdir(dirPath, 0o700)
-
-	b := &config.BrainsConfig{}
-	_, err := b.SetContextFromGlob(filepath.Join(dirPath, "*"))
-	assert.Error(t, err)
 }

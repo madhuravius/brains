@@ -1,12 +1,25 @@
 package core
 
 import (
+	"os"
+
+	"github.com/pterm/pterm"
+
+	"brains/internal/agents/file_system"
 	"brains/internal/aws"
 	brainsConfig "brains/internal/config"
 )
 
 func NewCoreConfig(awsConfig *aws.AWSConfig) *CoreConfig {
+	fsAgentConfig, err := file_system.NewFileSystemConfig()
+	if err != nil {
+		pterm.Error.Printf("Failed to load fs agent configuration: %v\n", err)
+		os.Exit(1)
+	}
 	return &CoreConfig{
+		agentsConfig: &agentsConfig{
+			fsAgentConfig: fsAgentConfig,
+		},
 		awsConfig: awsConfig,
 	}
 }
