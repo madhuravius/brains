@@ -20,7 +20,7 @@ build: ## Compile the binary into ./build/brains
 	echo "Dependencies used: "
 	go list -m all
 	echo "Building"
-	go build -v -o build/brains ./cmd/cli/*.go
+	go build -ldflags "-s -w" -v -o build/brains ./cmd/cli/*.go
 .PHONY: build
 
 tools: ## Install auxiliary dev tools (gotestsum)

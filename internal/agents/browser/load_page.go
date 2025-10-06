@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	neturl "net/url"
+	"regexp"
 	"strings"
 
 	"github.com/go-rod/rod"
@@ -36,5 +37,13 @@ func FetchWebContext(ctx context.Context, url string) (string, error) {
 		return "", fmt.Errorf("readability extraction failed: %w", err)
 	}
 
-	return article.TextContent, nil
+	// strip all the extra content
+	text := article.TextContent
+	reNewline := regexp.MustCompile(`\n|\r`)
+	cleanedText := reNewline.ReplaceAllString(text, " ")
+
+	reMultipleSpaces := regexp.MustCompile(`\s+`)
+	cleanedText = reMultipleSpaces.ReplaceAllString(cleanedText, " ")
+
+	return cleanedText, nil
 }
