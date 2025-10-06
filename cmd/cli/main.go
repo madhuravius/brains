@@ -6,18 +6,12 @@ import (
 	"github.com/pterm/pterm"
 	"github.com/urfave/cli/v2"
 
-	"brains/internal/agents/file_system"
 	"brains/internal/aws"
 	"brains/internal/config"
 	"brains/internal/core"
 )
 
-type agentsConfig struct {
-	fsAgentConfig *file_system.FileSystemConfig
-}
-
 type CLIConfig struct {
-	agentsConfig *agentsConfig
 	awsConfig    *aws.AWSConfig
 	brainsConfig *config.BrainsConfig
 	coreConfig   *core.CoreConfig
@@ -57,15 +51,7 @@ func main() {
 	coreConfig := core.NewCoreConfig(awsConfig)
 	coreConfig.SetLogger(cfg)
 
-	fsAgentConfig, err := file_system.NewFileSystemConfig()
-	if err != nil {
-		pterm.Error.Printf("Failed to load fs agent configuration: %v\n", err)
-		os.Exit(1)
-	}
 	cliConfig := &CLIConfig{
-		agentsConfig: &agentsConfig{
-			fsAgentConfig: fsAgentConfig,
-		},
 		awsConfig:    awsConfig,
 		brainsConfig: cfg,
 		coreConfig:   coreConfig,
@@ -107,16 +93,7 @@ func main() {
 						os.Exit(1)
 					}
 					personaInstructions := cliConfig.brainsConfig.GetPersonaInstructions(cliConfig.persona)
-					addedContext := ""
-					if cliConfig.glob != "" {
-						var err error
-						addedContext, err = cliConfig.agentsConfig.fsAgentConfig.SetContextFromGlob(cliConfig.glob)
-						if err != nil {
-							pterm.Error.Printfln("failed to read glob pattern for context: %v", err)
-							os.Exit(1)
-						}
-					}
-					if !cliConfig.coreConfig.Ask(prompt, personaInstructions, cliConfig.brainsConfig.Model, addedContext) {
+					if !cliConfig.coreConfig.Ask(prompt, personaInstructions, cliConfig.brainsConfig.Model, cliConfig.glob) {
 						pterm.Error.Println("failed to get response from Bedrock")
 						os.Exit(1)
 					}
@@ -140,17 +117,7 @@ func main() {
 						os.Exit(1)
 					}
 					personaInstructions := cliConfig.brainsConfig.GetPersonaInstructions(cliConfig.persona)
-					addedContext := ""
-					if cliConfig.glob != "" {
-						var err error
-						addedContext, err = cliConfig.agentsConfig.fsAgentConfig.SetContextFromGlob(cliConfig.glob)
-						if err != nil {
-							pterm.Error.Printfln("failed to read glob pattern for context: %v", err)
-							os.Exit(1)
-						}
-
-					}
-					if !cliConfig.coreConfig.Code(prompt, personaInstructions, cliConfig.brainsConfig.Model, addedContext) {
+					if !cliConfig.coreConfig.Code(prompt, personaInstructions, cliConfig.brainsConfig.Model, cliConfig.glob) {
 						os.Exit(0)
 					}
 
