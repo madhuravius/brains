@@ -9,10 +9,12 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type TestLogger struct{}
+type TestLogger struct {
+	Data string
+}
 
-func (l *TestLogger) LogMessage(string)     {}
-func (l *TestLogger) GetLogContext() string { return "" }
+func (l *TestLogger) LogMessage(data string) { l.Data = data }
+func (l *TestLogger) GetLogContext() string  { return "" }
 
 type MockSTSClient struct {
 	Output *sts.GetCallerIdentityOutput
@@ -27,7 +29,6 @@ type MockInvoker struct {
 	mock.Mock
 }
 
-// Implements InvokeModel for the classic API.
 func (m *MockInvoker) InvokeModel(ctx context.Context, input *bedrockruntime.InvokeModelInput) (*bedrockruntime.InvokeModelOutput, error) {
 	args := m.Called(ctx, input)
 	if out := args.Get(0); out != nil {
@@ -36,7 +37,6 @@ func (m *MockInvoker) InvokeModel(ctx context.Context, input *bedrockruntime.Inv
 	return nil, args.Error(1)
 }
 
-// Implements ListFoundationModels for model discovery.
 func (m *MockInvoker) ListFoundationModels(ctx context.Context, input *bedrock.ListFoundationModelsInput) (*bedrock.ListFoundationModelsOutput, error) {
 	args := m.Called(ctx, input)
 	if out := args.Get(0); out != nil {
@@ -45,7 +45,6 @@ func (m *MockInvoker) ListFoundationModels(ctx context.Context, input *bedrock.L
 	return nil, args.Error(1)
 }
 
-// Implements ConverseModel for the newer Converse API.
 func (m *MockInvoker) ConverseModel(ctx context.Context, input *bedrockruntime.ConverseInput) (*bedrockruntime.ConverseOutput, error) {
 	args := m.Called(ctx, input)
 	if out := args.Get(0); out != nil {

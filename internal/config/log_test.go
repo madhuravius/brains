@@ -15,7 +15,7 @@ func TestInitLoggerDisabled(t *testing.T) {
 	tmp := t.TempDir()
 	orig, _ := os.Getwd()
 	_ = os.Chdir(tmp)
-	defer os.Chdir(orig)
+	defer func() { _ = os.Chdir(orig) }()
 
 	b := &BrainsConfig{}
 	err := b.initLogger(false)
@@ -29,7 +29,7 @@ func TestInitLoggerCreatesFile(t *testing.T) {
 	tmp := t.TempDir()
 	orig, _ := os.Getwd()
 	_ = os.Chdir(tmp)
-	defer os.Chdir(orig)
+	defer func() { _ = os.Chdir(orig) }()
 
 	b := &BrainsConfig{}
 	err := b.initLogger(true)
@@ -43,7 +43,7 @@ func TestLogMessageAndGetLogContext(t *testing.T) {
 	tmp := t.TempDir()
 	orig, _ := os.Getwd()
 	_ = os.Chdir(tmp)
-	defer os.Chdir(orig)
+	defer func() { _ = os.Chdir(orig) }()
 
 	b := &BrainsConfig{}
 	_ = b.initLogger(true)
@@ -71,7 +71,7 @@ func TestPrintLogsTagConversion(t *testing.T) {
 	tmp := t.TempDir()
 	orig, _ := os.Getwd()
 	_ = os.Chdir(tmp)
-	defer os.Chdir(orig)
+	defer func() { _ = os.Chdir(orig) }()
 
 	b := &BrainsConfig{}
 	_ = b.initLogger(true)
@@ -101,7 +101,7 @@ func TestResetClearsLog(t *testing.T) {
 	tmp := t.TempDir()
 	orig, _ := os.Getwd()
 	_ = os.Chdir(tmp)
-	defer os.Chdir(orig)
+	defer func() { _ = os.Chdir(orig) }()
 
 	b := &BrainsConfig{}
 	_ = b.initLogger(true)
@@ -121,7 +121,7 @@ func TestDisabledLoggerDoesNothing(t *testing.T) {
 	tmp := t.TempDir()
 	orig, _ := os.Getwd()
 	_ = os.Chdir(tmp)
-	defer os.Chdir(orig)
+	defer func() { _ = os.Chdir(orig) }()
 
 	b := &BrainsConfig{}
 	_ = b.initLogger(false)

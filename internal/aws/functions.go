@@ -57,7 +57,7 @@ func (a *AWSConfig) CallAWSBedrock(ctx context.Context, modelID string, req Bedr
 func (a *AWSConfig) CallAWSBedrockConverse(ctx context.Context, modelID string, req BedrockRequest) ([]byte, error) {
 	client := a.GetInvoker()
 
-	var messages []bedrockruntimeTypes.Message
+	messages := []bedrockruntimeTypes.Message{}
 	for _, m := range req.Messages {
 		var content bedrockruntimeTypes.ContentBlockMemberText
 		if len(m.Content) > 0 && m.Content[0].Type == "text" {
@@ -117,8 +117,10 @@ func (a *AWSConfig) PrintCost(usage map[string]any) {
 			completionTokens = int(val)
 		}
 	}
-	inputPricePerK := 0.00015
-	outputPricePerK := 0.0006
+	const (
+		inputPricePerK  = 0.00015
+		outputPricePerK = 0.0006
+	)
 	cost := (float64(promptTokens) / 1000.0 * inputPricePerK) + (float64(completionTokens) / 1000.0 * outputPricePerK)
 	pterm.Info.Printf("Estimated cost for this request: $%.6f (prompt tokens: %d, completion tokens: %d)\n", cost, promptTokens, completionTokens)
 }
