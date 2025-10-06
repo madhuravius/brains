@@ -1,39 +1,11 @@
 package config
 
 import (
-	"bufio"
 	"os"
 	"path/filepath"
-	"strings"
-	"sync"
 
-	"github.com/pterm/pterm"
 	"gopkg.in/yaml.v3"
 )
-
-type logger struct {
-	enabled bool
-	file    *os.File
-	mu      sync.Mutex
-	mem     []string
-}
-
-type SimpleLogger interface {
-	LogMessage(string)
-	GetLogContext() string
-}
-
-type BrainsConfig struct {
-	LoggingEnabled bool              `yaml:"logging_enabled"`
-	AWSRegion      string            `yaml:"aws_region"`
-	Model          string            `yaml:"model"`
-	Personas       map[string]string `yaml:"personas"`
-	DefaultContext string            `yaml:"default_context"`
-	DefaultPersona string            `yaml:"default_persona"`
-
-	ignorePatterns []string
-	logger         logger `yaml:"-"`
-}
 
 var DefaultConfig = BrainsConfig{
 	LoggingEnabled: true,
@@ -42,29 +14,6 @@ var DefaultConfig = BrainsConfig{
 	Personas:       map[string]string{},
 	DefaultContext: "**/*",
 	DefaultPersona: "",
-}
-
-func loadGitignore(path string) ([]string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			pterm.Warning.Println(".gitignore not found, continuing")
-			return []string{}, nil
-		}
-		return nil, err
-	}
-	defer func() { _ = f.Close() }()
-
-	var patterns []string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		patterns = append(patterns, line)
-	}
-	return patterns, scanner.Err()
 }
 
 func LoadConfig() (*BrainsConfig, error) {
@@ -103,11 +52,6 @@ func LoadConfig() (*BrainsConfig, error) {
 	}
 	if cfg.Model == "" {
 		cfg.Model = DefaultConfig.Model
-	}
-
-	cfg.ignorePatterns, err = loadGitignore(".gitignore")
-	if err != nil {
-		return nil, err
 	}
 
 	if err := cfg.initLogger(cfg.LoggingEnabled); err != nil {
