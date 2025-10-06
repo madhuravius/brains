@@ -2,48 +2,37 @@ package aws_test
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"os"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/bedrock"
+	"github.com/aws/aws-sdk-go-v2/service/bedrock/types"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
+	bedrockruntimeTypes "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"brains/internal/aws"
+	awsBrains "brains/internal/aws"
+	mockBrains "brains/internal/mock"
 )
 
-type mockInvoker struct {
-	mock.Mock
+func captureStdout(fn func()) string {
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	fn()
+	_ = w.Close()
+	os.Stdout = old
+	b, _ := io.ReadAll(r)
+	return string(b)
 }
-
-func (m *mockInvoker) InvokeModel(ctx context.Context, input *bedrockruntime.InvokeModelInput) (*bedrockruntime.InvokeModelOutput, error) {
-	args := m.Called(ctx, input)
-	if out := args.Get(0); out != nil {
-		return out.(*bedrockruntime.InvokeModelOutput), args.Error(1)
-	}
-	return nil, args.Error(1)
-}
-
-func (m *mockInvoker) ListFoundationModels(ctx context.Context, input *bedrock.ListFoundationModelsInput) (*bedrock.ListFoundationModelsOutput, error) {
-	args := m.Called(ctx, input)
-	if out := args.Get(0); out != nil {
-		return out.(*bedrock.ListFoundationModelsOutput), args.Error(1)
-	}
-	return nil, args.Error(1)
-}
-
-type testLogger struct{}
-
-func (l *testLogger) LogMessage(string)     {}
-func (l *testLogger) GetLogContext() string { return "" }
 
 func TestCallAWSBedrockSuccess(t *testing.T) {
-	cfg := &aws.AWSConfig{}
-	invokerMock := &mockInvoker{}
+	cfg := &awsBrains.AWSConfig{}
+	invokerMock := &mockBrains.MockInvoker{}
 	cfg.SetInvoker(invokerMock)
 
 	expectedBody := []byte(`{"choices":[],"usage":{}}`)
@@ -51,18 +40,14 @@ func TestCallAWSBedrockSuccess(t *testing.T) {
 		Body: expectedBody,
 	}, nil)
 
-	req := aws.BedrockRequest{
-		Messages: []aws.BedrockMessage{
-			{
-				Role: "user",
-				Content: []aws.BedrockContent{
-					{
-						Type: "text",
-						Text: "test",
-					},
-				},
-			},
-		},
+	req := awsBrains.BedrockRequest{
+		Messages: []awsBrains.BedrockMessage{{
+			Role: "user",
+			Content: []awsBrains.BedrockContent{{
+				Type: "text",
+				Text: "test",
+			}},
+		}},
 	}
 	body, err := cfg.CallAWSBedrock(context.Background(), "model-id", req)
 	assert.NoError(t, err)
@@ -71,113 +56,103 @@ func TestCallAWSBedrockSuccess(t *testing.T) {
 }
 
 func TestCallAWSBedrockError(t *testing.T) {
-	cfg := &aws.AWSConfig{}
-	invokerMock := &mockInvoker{}
+	cfg := &awsBrains.AWSConfig{}
+	invokerMock := &mockBrains.MockInvoker{}
 	cfg.SetInvoker(invokerMock)
 
 	invokerMock.On("InvokeModel", mock.Anything, mock.Anything).Return(nil, errors.New("invoke error"))
 
-	req := aws.BedrockRequest{}
+	req := awsBrains.BedrockRequest{}
 	_, err := cfg.CallAWSBedrock(context.Background(), "model-id", req)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invoke error")
 	invokerMock.AssertExpectations(t)
 }
 
-func TestValidateBedrockConfigurationSuccess(t *testing.T) {
-	cfg := &aws.AWSConfig{}
-	invokerMock := &mockInvoker{}
-	cfg.SetInvoker(invokerMock)
+func TestDescribeModelFound(t *testing.T) {
+	cfg := &awsBrains.AWSConfig{}
+	inv := &mockBrains.MockInvoker{}
+	cfg.SetInvoker(inv)
 
-	cfg.SetLogger(&testLogger{})
+	modelID := "my-model"
+	summary := types.FoundationModelSummary{ModelId: aws.String(modelID)}
+	out := &bedrock.ListFoundationModelsOutput{ModelSummaries: []types.FoundationModelSummary{summary}}
+	inv.On("ListFoundationModels", mock.Anything, mock.Anything).Return(out, nil)
 
-	response := aws.ChatResponse{
-		Choices: []struct {
-			Message struct {
-				Role    string `json:"role"`
-				Content string `json:"content"`
-			} `json:"message"`
-		}{
-			{
-				Message: struct {
-					Role    string `json:"role"`
-					Content string `json:"content"`
-				}{
-					Role:    "assistant",
-					Content: "All good",
-				},
-			},
-		},
-		Usage: map[string]any{
-			"prompt_tokens":     10,
-			"completion_tokens": 5,
-		},
-	}
-	respBytes, _ := json.Marshal(response)
-
-	invokerMock.On("InvokeModel", mock.Anything, mock.Anything).Return(&bedrockruntime.InvokeModelOutput{
-		Body: respBytes,
-	}, nil)
-
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	ok := cfg.ValidateBedrockConfiguration()
-	assert.True(t, ok)
-
-	_ = w.Close()
-	_, _ = io.ReadAll(r)
-	os.Stdout = oldStdout
-
-	invokerMock.AssertExpectations(t)
+	got := cfg.DescribeModel(modelID)
+	assert.NotNil(t, got)
+	assert.Equal(t, modelID, *got.ModelId)
+	inv.AssertExpectations(t)
 }
 
-func TestAskSuccess(t *testing.T) {
-	cfg := &aws.AWSConfig{}
-	invokerMock := &mockInvoker{}
-	cfg.SetInvoker(invokerMock)
+func TestDescribeModelNotFound(t *testing.T) {
+	cfg := &awsBrains.AWSConfig{}
+	inv := &mockBrains.MockInvoker{}
+	cfg.SetInvoker(inv)
 
-	cfg.SetLogger(&testLogger{})
+	out := &bedrock.ListFoundationModelsOutput{ModelSummaries: []types.FoundationModelSummary{}}
+	inv.On("ListFoundationModels", mock.Anything, mock.Anything).Return(out, nil)
 
-	response := aws.ChatResponse{
-		Choices: []struct {
-			Message struct {
-				Role    string `json:"role"`
-				Content string `json:"content"`
-			} `json:"message"`
-		}{
-			{
-				Message: struct {
-					Role    string `json:"role"`
-					Content string `json:"content"`
-				}{
-					Role:    "assistant",
-					Content: "Reply",
-				},
-			},
-		},
-		Usage: map[string]any{
-			"prompt_tokens":     1,
-			"completion_tokens": 1,
-		},
-	}
-	respBytes, _ := json.Marshal(response)
+	got := cfg.DescribeModel("missing")
+	assert.Nil(t, got)
+	inv.AssertExpectations(t)
+}
 
-	invokerMock.On("InvokeModel", mock.Anything, mock.Anything).Return(&bedrockruntime.InvokeModelOutput{
-		Body: respBytes,
-	}, nil)
+func TestCallAWSBedrockConverseSuccess(t *testing.T) {
+	cfg := &awsBrains.AWSConfig{}
+	inv := &mockBrains.MockInvoker{}
+	cfg.SetInvoker(inv)
 
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
+	req := awsBrains.BedrockRequest{Messages: []awsBrains.BedrockMessage{{
+		Role:    "assistant",
+		Content: []awsBrains.BedrockContent{{Type: "text", Text: "hello"}},
+	}}}
 
-	ok := cfg.Ask("prompt", "", "")
-	assert.True(t, ok)
+	text := bedrockruntimeTypes.ContentBlockMemberText{Value: "response"}
+	msg := bedrockruntimeTypes.Message{Role: bedrockruntimeTypes.ConversationRoleAssistant, Content: []bedrockruntimeTypes.ContentBlock{&text}}
+	outputMember := bedrockruntimeTypes.ConverseOutputMemberMessage{Value: msg}
+	convOut := &bedrockruntime.ConverseOutput{Output: &outputMember}
+	inv.On("ConverseModel", mock.Anything, mock.Anything).Return(convOut, nil)
 
-	_ = w.Close()
-	_, _ = io.ReadAll(r)
-	os.Stdout = oldStdout
+	b, err := cfg.CallAWSBedrockConverse(context.Background(), "model-id", req)
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("response"), b)
+	inv.AssertExpectations(t)
+}
 
-	invokerMock.AssertExpectations(t)
+func TestCallAWSBedrockConverseError(t *testing.T) {
+	cfg := &awsBrains.AWSConfig{}
+	inv := &mockBrains.MockInvoker{}
+	cfg.SetInvoker(inv)
+
+	req := awsBrains.BedrockRequest{}
+	inv.On("ConverseModel", mock.Anything, mock.Anything).Return(nil, io.ErrUnexpectedEOF)
+
+	_, err := cfg.CallAWSBedrockConverse(context.Background(), "model-id", req)
+	assert.Error(t, err)
+	inv.AssertExpectations(t)
+}
+
+func TestPrintCost(t *testing.T) {
+	cfg := &awsBrains.AWSConfig{}
+	assert.NotPanics(t, func() {
+		cfg.PrintCost(map[string]any{"prompt_tokens": 10, "completion_tokens": 5})
+	})
+}
+
+func TestPrintContext(t *testing.T) {
+	cfg := &awsBrains.AWSConfig{}
+	assert.NotPanics(t, func() {
+		cfg.PrintContext(map[string]any{"prompt_tokens": 300, "completion_tokens": 200})
+	})
+}
+
+func TestPrintBedrockMessage(t *testing.T) {
+	cfg := &awsBrains.AWSConfig{}
+	md := "# Header\n\n* item"
+	out := captureStdout(func() {
+		cfg.PrintBedrockMessage(md)
+	})
+	assert.NotEmpty(t, out)
+	assert.Contains(t, out, "Header")
 }

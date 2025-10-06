@@ -17,7 +17,7 @@ func main() {
 		pterm.Fatal.Printf("load config: %v", err)
 	}
 
-	awsCfg := aws.NewAWSConfig(cfg.Model, cfg.AWSRegion)
+	awsCfg := aws.NewAWSConfig(cfg.AWSRegion)
 	if !awsCfg.SetAndValidateCredentials() {
 		pterm.Fatal.Printf("invalid AWS credentials")
 	}

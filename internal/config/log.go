@@ -51,9 +51,9 @@ func (b *BrainsConfig) PrintLogs() {
 
 	logCtx := b.GetLogContext()
 
-	logCtx = strings.ReplaceAll(logCtx, "[REQUEST]", "# __[❓ REQUEST]__ \n")
-	logCtx = strings.ReplaceAll(logCtx, "[RESPONSE]", "# __[⚡ RESPONSE]__ \n")
-	logCtx = strings.ReplaceAll(logCtx, "[RESPONSE FOR CODE]", "# __[🧠 RESPONSE FOR CODE]__ \n")
+	logCtx = strings.ReplaceAll(logCtx, "[REQUEST]", "[❓ REQUEST]")
+	logCtx = strings.ReplaceAll(logCtx, "[RESPONSE]", "[⚡ RESPONSE]")
+	logCtx = strings.ReplaceAll(logCtx, "[RESPONSE FOR CODE]", "[🧠 RESPONSE FOR CODE]")
 
 	rendered, _ := r.Render(logCtx)
 	fmt.Println(rendered)

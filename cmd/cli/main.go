@@ -8,11 +8,13 @@ import (
 
 	"brains/internal/aws"
 	"brains/internal/config"
+	"brains/internal/core"
 )
 
 type CLIConfig struct {
 	awsConfig    *aws.AWSConfig
 	brainsConfig *config.BrainsConfig
+	coreConfig   *core.CoreConfig
 	persona      string
 	glob         string
 }
@@ -43,12 +45,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	awsConfig := aws.NewAWSConfig(cfg.Model, cfg.AWSRegion)
+	awsConfig := aws.NewAWSConfig(cfg.AWSRegion)
 	awsConfig.SetLogger(cfg)
+
+	coreConfig := core.NewCoreConfig(awsConfig)
+	coreConfig.SetLogger(cfg)
 
 	cliConfig := &CLIConfig{
 		awsConfig:    awsConfig,
 		brainsConfig: cfg,
+		coreConfig:   coreConfig,
 	}
 
 	app := &cli.App{
@@ -64,7 +70,7 @@ func main() {
 						pterm.Error.Println("unable to validate credentials")
 						os.Exit(1)
 					}
-					if !cliConfig.awsConfig.ValidateBedrockConfiguration() {
+					if !cliConfig.coreConfig.ValidateBedrockConfiguration(cliConfig.brainsConfig.Model) {
 						pterm.Error.Println("unable to access bedrock")
 						os.Exit(1)
 					}
@@ -96,7 +102,7 @@ func main() {
 							os.Exit(1)
 						}
 					}
-					if !cliConfig.awsConfig.Ask(prompt, personaInstructions, addedContext) {
+					if !cliConfig.coreConfig.Ask(prompt, personaInstructions, cliConfig.brainsConfig.Model, addedContext) {
 						pterm.Error.Println("failed to get response from Bedrock")
 						os.Exit(1)
 					}
@@ -130,7 +136,7 @@ func main() {
 						}
 
 					}
-					if !cliConfig.awsConfig.Code(prompt, personaInstructions, addedContext) {
+					if !cliConfig.coreConfig.Code(prompt, personaInstructions, cliConfig.brainsConfig.Model, addedContext) {
 						os.Exit(0)
 					}
 

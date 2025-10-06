@@ -1,15 +1,32 @@
 package aws
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+
+	brainsConfig "brains/internal/config"
+)
+
+type AWSConfig struct {
+	cfg     aws.Config
+	region  string
+	invoker BedrockInvoker
+	logger  brainsConfig.SimpleLogger
+}
+
+type ResponseMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type ResponseChoice struct {
+	Message ResponseMessage `json:"message"`
+}
 
 type ChatResponse struct {
-	Choices []struct {
-		Message struct {
-			Role    string `json:"role"`
-			Content string `json:"content"`
-		} `json:"message"`
-	} `json:"choices"`
-	Usage map[string]any
+	Choices []ResponseChoice `json:"choices"`
+	Usage   map[string]any
 }
 
 type BedrockSource struct {
@@ -64,6 +81,17 @@ type CodeUpdate struct {
 	NewCode string `json:"new_code"`
 }
 
+type AddCodeFile struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+}
+
+type RemoveCodeFile struct {
+	Path string `json:"path"`
+}
+
 type CodeModelResponse struct {
-	CodeUpdates []CodeUpdate `json:"code_updates"`
+	CodeUpdates     []CodeUpdate     `json:"code_updates"`
+	AddCodeFiles    []AddCodeFile    `json:"add_code_files,omitempty"`
+	RemoveCodeFiles []RemoveCodeFile `json:"remove_code_files,omitempty"`
 }
