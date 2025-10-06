@@ -15,7 +15,7 @@ import (
 	mockBrains "brains/internal/mock"
 )
 
-func setupCore(t *testing.T) (*core.CoreConfig, *mockBrains.MockInvoker) {
+func setupCore() (*core.CoreConfig, *mockBrains.MockInvoker) {
 	awsCfg := &aws.AWSConfig{}
 	invoker := &mockBrains.MockInvoker{}
 	awsCfg.SetInvoker(invoker)
@@ -79,9 +79,8 @@ func TestCoreFunctions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			c, inv := setupCore(t)
+			c, inv := setupCore()
 			tt.setupMock(inv)
 			oldStdout := os.Stdout
 			r, w, _ := os.Pipe()

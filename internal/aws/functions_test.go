@@ -19,7 +19,7 @@ import (
 	mockBrains "brains/internal/mock"
 )
 
-func captureStdout(t *testing.T, fn func()) string {
+func captureStdout(fn func()) string {
 	old := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
@@ -150,7 +150,7 @@ func TestPrintContext(t *testing.T) {
 func TestPrintBedrockMessage(t *testing.T) {
 	cfg := &awsBrains.AWSConfig{}
 	md := "# Header\n\n* item"
-	out := captureStdout(t, func() {
+	out := captureStdout(func() {
 		cfg.PrintBedrockMessage(md)
 	})
 	assert.NotEmpty(t, out)

@@ -9,11 +9,10 @@ import (
 )
 
 type AWSConfig struct {
-	cfg                 aws.Config
-	defaultBedrockModel string
-	region              string
-	invoker             BedrockInvoker
-	logger              brainsConfig.SimpleLogger
+	cfg     aws.Config
+	region  string
+	invoker BedrockInvoker
+	logger  brainsConfig.SimpleLogger
 }
 
 type ResponseMessage struct {

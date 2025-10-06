@@ -94,9 +94,12 @@ func (a *AWSConfig) CallAWSBedrockConverse(ctx context.Context, modelID string, 
 	}
 	var text *bedrockruntimeTypes.ContentBlockMemberText
 	for _, responseBlock := range responseText.Value.Content {
-		text, ok = responseBlock.(*bedrockruntimeTypes.ContentBlockMemberText)
-		if !ok {
+		returnedText, okText := responseBlock.(*bedrockruntimeTypes.ContentBlockMemberText)
+		if !okText {
 			continue
+		} else {
+			text = returnedText
+			break
 		}
 	}
 	if text == nil {
