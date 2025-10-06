@@ -10,7 +10,7 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
-func (f FileSystemConfig) CreateFile(filePath, fileContents string) error {
+func (f *FileSystemConfig) CreateFile(filePath, fileContents string) error {
 	dmp := diffmatchpatch.New()
 	diffs := dmp.DiffMain("", fileContents, false)
 	diffText := dmp.DiffPrettyText(diffs)

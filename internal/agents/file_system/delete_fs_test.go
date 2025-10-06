@@ -5,8 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"brains/internal/agents/file_system"
 	"github.com/stretchr/testify/assert"
+
+	"brains/internal/agents/file_system"
 )
 
 func TestDeleteFile_DeletesAndShowsDiff(t *testing.T) {
@@ -43,7 +44,7 @@ func TestDeleteFile_ReadErrorRemovalFails(t *testing.T) {
 	assert.NoError(t, err)
 
 	dir := "parent"
-	assert.NoError(t, os.MkdirAll(dir, 0o755))
+	assert.NoError(t, os.MkdirAll(dir, 0o750))
 	// put a child file so the directory is non‑empty – os.Remove will fail.
 	child := filepath.Join(dir, "child.txt")
 	assert.NoError(t, os.WriteFile(child, []byte("x"), 0o600))

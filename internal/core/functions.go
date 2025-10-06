@@ -4,11 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 
-	"github.com/charmbracelet/glamour"
 	"github.com/pterm/pterm"
-	"github.com/sergi/go-diff/diffmatchpatch"
 
 	"brains/internal/aws"
 )
@@ -129,28 +126,10 @@ func (c *CoreConfig) Code(prompt, personaInstructions, modelID, glob string) boo
 	for updateIdx, update := range data.CodeUpdates {
 		pterm.Info.Printfln("Updating file: %s (%d/%d)", update.Path, updateIdx+1, len(data.CodeUpdates))
 
-		dmp := diffmatchpatch.New()
-		diffs := dmp.DiffMain(update.OldCode, update.NewCode, false)
-		diffText := dmp.DiffPrettyText(diffs)
-
-		r, _ := glamour.NewTermRenderer(
-			glamour.WithAutoStyle(),
-			glamour.WithWordWrap(100),
-		)
-		renderedDiff, _ := r.Render(fmt.Sprintf("diff\n%s\n", diffText))
-		fmt.Println(renderedDiff)
-
-		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText(fmt.Sprintf("Apply changes to %s?", update.Path)).Show()
-		if !ok {
-			pterm.Warning.Printfln("Skipped: %s", update.Path)
-			continue
+		if _, err := c.agentsConfig.fsAgentConfig.UpdateFile(update.Path, update.OldCode, update.NewCode, true); err != nil {
+			pterm.Error.Printfln("Failed to update %s: %v", update.Path, err)
+			return false
 		}
-
-		if err := os.WriteFile(update.Path, []byte(update.NewCode), 0644); err != nil {
-			pterm.Error.Printfln("Failed to write %s: %v", update.Path, err)
-			continue
-		}
-		pterm.Success.Printfln("Updated %s successfully", update.Path)
 	}
 
 	for addIdx, add := range data.AddCodeFiles {
