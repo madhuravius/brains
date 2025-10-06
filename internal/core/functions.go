@@ -14,7 +14,7 @@ func (c *CoreConfig) enrichWithGlob(glob string) (string, error) {
 	addedContext := ""
 	if glob != "" {
 		var err error
-		addedContext, err = c.agentsConfig.fsAgentConfig.SetContextFromGlob(glob)
+		addedContext, err = c.toolsConfig.fsToolConfig.SetContextFromGlob(glob)
 		if err != nil {
 			pterm.Error.Printfln("failed to read glob pattern for context: %v", err)
 			return "", err
@@ -76,15 +76,6 @@ func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool
 
 func (c *CoreConfig) Code(prompt, personaInstructions, modelID, glob string) bool {
 	ctx := context.Background()
-	if !c.Ask(prompt, personaInstructions, modelID, glob) {
-		return false
-	}
-	pterm.Info.Printf("will edit files in place for those listed above\n")
-	result, _ := pterm.DefaultInteractiveConfirm.WithDefaultText("Continue with file edits?").Show()
-	if !result {
-		pterm.Warning.Printf("refused to continue, breaking early")
-		return false
-	}
 
 	promptToSendBedrock := ""
 	addedContext, err := c.enrichWithGlob(glob)
@@ -93,7 +84,7 @@ func (c *CoreConfig) Code(prompt, personaInstructions, modelID, glob string) boo
 	}
 	promptToSendBedrock += addedContext
 	if logCtx := c.logger.GetLogContext(); logCtx != "" {
-		promptToSendBedrock += fmt.Sprintf("%s\n\n%s", logCtx, CoderPromptPostProcess)
+		promptToSendBedrock += fmt.Sprintf("%s\n%s\n%s", logCtx, prompt, CoderPromptPostProcess)
 	}
 
 	req := aws.BedrockRequest{
@@ -123,10 +114,15 @@ func (c *CoreConfig) Code(prompt, personaInstructions, modelID, glob string) boo
 		return false
 	}
 
+	c.logger.LogMessage("[RESPONSE] " + data.MarkdownSummary)
+	c.awsConfig.PrintBedrockMessage(data.MarkdownSummary)
+
+	pterm.Info.Printfln("reviewing each code update, for review one at a time. %d pending updates", len(data.CodeUpdates))
+
 	for updateIdx, update := range data.CodeUpdates {
 		pterm.Info.Printfln("Updating file: %s (%d/%d)", update.Path, updateIdx+1, len(data.CodeUpdates))
 
-		if _, err := c.agentsConfig.fsAgentConfig.UpdateFile(update.Path, update.OldCode, update.NewCode, true); err != nil {
+		if _, err := c.toolsConfig.fsToolConfig.UpdateFile(update.Path, update.OldCode, update.NewCode, true); err != nil {
 			pterm.Error.Printfln("Failed to update %s: %v", update.Path, err)
 			return false
 		}
@@ -139,7 +135,7 @@ func (c *CoreConfig) Code(prompt, personaInstructions, modelID, glob string) boo
 			pterm.Warning.Printfln("Skipped creation of: %s", add.Path)
 			continue
 		}
-		if err := c.agentsConfig.fsAgentConfig.CreateFile(add.Path, add.Content); err != nil {
+		if err := c.toolsConfig.fsToolConfig.CreateFile(add.Path, add.Content); err != nil {
 			pterm.Error.Printfln("Failed to write %s: %v", add.Path, err)
 			return false
 		}
@@ -153,7 +149,7 @@ func (c *CoreConfig) Code(prompt, personaInstructions, modelID, glob string) boo
 			pterm.Warning.Printfln("Skipped deletion of: %s", rem.Path)
 			continue
 		}
-		if err := c.agentsConfig.fsAgentConfig.DeleteFile(rem.Path); err != nil {
+		if err := c.toolsConfig.fsToolConfig.DeleteFile(rem.Path); err != nil {
 			pterm.Error.Printfln("Failed to write %s: %v", rem.Path, err)
 			return false
 		}

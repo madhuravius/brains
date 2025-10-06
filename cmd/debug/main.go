@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 
-	"brains/internal/agents/browser"
-	"brains/internal/agents/file_system"
 	"brains/internal/aws"
 	"brains/internal/config"
+	"brains/internal/tools/browser"
+	"brains/internal/tools/file_system"
 
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/pterm/pterm"

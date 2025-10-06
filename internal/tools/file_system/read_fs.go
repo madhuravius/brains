@@ -133,7 +133,7 @@ func (f *FileSystemConfig) SetContextFromGlob(pattern string) (string, error) {
 			continue
 		}
 
-		pterm.Info.Printfln("added file to context: %s", fpath)
+		pterm.Debug.Printfln("added file to context: %s", fpath)
 		contents[fpath] = string(data)
 	}
 

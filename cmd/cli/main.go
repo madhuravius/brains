@@ -38,6 +38,13 @@ func generateCommonFlags(cliConfig *CLIConfig, cfg *config.BrainsConfig) []cli.F
 	}
 }
 
+func (c *CLIConfig) validateAWSCredentials() {
+	if !c.awsConfig.SetAndValidateCredentials() {
+		pterm.Error.Println("unable to validate credentials")
+		os.Exit(1)
+	}
+}
+
 func main() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -66,10 +73,7 @@ func main() {
 				Usage: "verify functionality and connections",
 				Action: func(c *cli.Context) error {
 					pterm.Info.Println("health checks starting")
-					if !cliConfig.awsConfig.SetAndValidateCredentials() {
-						pterm.Error.Println("unable to validate credentials")
-						os.Exit(1)
-					}
+					cliConfig.validateAWSCredentials()
 					if !cliConfig.coreConfig.ValidateBedrockConfiguration(cliConfig.brainsConfig.Model) {
 						pterm.Error.Println("unable to access bedrock")
 						os.Exit(1)
@@ -88,10 +92,7 @@ func main() {
 						textInput := pterm.DefaultInteractiveTextInput.WithMultiLine()
 						prompt, _ = textInput.Show()
 					}
-					if !cliConfig.awsConfig.SetAndValidateCredentials() {
-						pterm.Error.Println("unable to validate credentials")
-						os.Exit(1)
-					}
+					cliConfig.validateAWSCredentials()
 					personaInstructions := cliConfig.brainsConfig.GetPersonaInstructions(cliConfig.persona)
 					if !cliConfig.coreConfig.Ask(prompt, personaInstructions, cliConfig.brainsConfig.Model, cliConfig.glob) {
 						pterm.Error.Println("failed to get response from Bedrock")
@@ -112,10 +113,7 @@ func main() {
 						textInput := pterm.DefaultInteractiveTextInput.WithMultiLine()
 						prompt, _ = textInput.Show()
 					}
-					if !cliConfig.awsConfig.SetAndValidateCredentials() {
-						pterm.Error.Println("unable to validate credentials")
-						os.Exit(1)
-					}
+					cliConfig.validateAWSCredentials()
 					personaInstructions := cliConfig.brainsConfig.GetPersonaInstructions(cliConfig.persona)
 					if !cliConfig.coreConfig.Code(prompt, personaInstructions, cliConfig.brainsConfig.Model, cliConfig.glob) {
 						os.Exit(0)

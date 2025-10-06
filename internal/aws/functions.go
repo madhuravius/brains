@@ -11,7 +11,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
 	bedrockruntimeTypes "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 	"github.com/charmbracelet/glamour"
+	"github.com/muesli/termenv"
 	"github.com/pterm/pterm"
+)
+
+const (
+	inputPricePerK  = 0.00015
+	outputPricePerK = 0.0006
+	tokenLimit      = 128000
 )
 
 func (a *AWSConfig) DescribeModel(model string) *types.FoundationModelSummary {
@@ -120,10 +127,6 @@ func (a *AWSConfig) PrintCost(usage map[string]any) {
 			completionTokens = int(val)
 		}
 	}
-	const (
-		inputPricePerK  = 0.00015
-		outputPricePerK = 0.0006
-	)
 	cost := (float64(promptTokens) / 1000.0 * inputPricePerK) + (float64(completionTokens) / 1000.0 * outputPricePerK)
 	pterm.Info.Printf("Estimated cost for this request: $%.6f (prompt tokens: %d, completion tokens: %d)\n", cost, promptTokens, completionTokens)
 }
@@ -141,7 +144,6 @@ func (a *AWSConfig) PrintContext(usage map[string]any) {
 		}
 	}
 	total := promptTokens + completionTokens
-	const tokenLimit = 128000
 	pterm.Info.Printf("Current context used: %d tokens (limit %d)\n", total, tokenLimit)
 }
 
@@ -149,6 +151,7 @@ func (a *AWSConfig) PrintBedrockMessage(content string) {
 	r, _ := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
 		glamour.WithWordWrap(120),
+		glamour.WithColorProfile(termenv.ANSI256),
 	)
 	result, _ := r.Render(content)
 	fmt.Println(result)

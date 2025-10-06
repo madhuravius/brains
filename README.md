@@ -12,7 +12,7 @@ common LLMs.
 * Commands to interact with Bedrock:
   * `ask` - ask questions and get a rich response
   * `code` - write code and/or files on your file system based on a request
-* Agents
+* Tools 
   * `file_system` - CRUD on files in your local FS
   * `browser` - execute scraping functions with a Chrome-based browser
 
@@ -48,3 +48,7 @@ make clean     # removes generated binaries and logs
 ```
 
 All commands are wrapped in the Makefile; use `make help` for a quick overview.
+
+## Credits
+
+This project is heavily inspired by the [Aider chat tool](https://github.com/Aider-AI/aider) and its ux/design principles.
