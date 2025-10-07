@@ -37,3 +37,8 @@ type CodeModelResponse struct {
 	AddCodeFiles    []AddCodeFile    `json:"add_code_files,omitempty"`
 	RemoveCodeFiles []RemoveCodeFile `json:"remove_code_files,omitempty"`
 }
+
+type CodeModelResponseWithParameters struct {
+	Name       string            `json:"name"`
+	Parameters CodeModelResponse `json:"parameters"`
+}

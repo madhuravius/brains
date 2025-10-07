@@ -84,7 +84,7 @@ var coderToolConfig = &types.ToolConfiguration{
 			},
 		},
 	},
-	ToolChoice: &types.ToolChoiceMemberAuto{
-		Value: types.AutoToolChoice{},
+	ToolChoice: &types.ToolChoiceMemberAny{
+		Value: types.AnyToolChoice{},
 	},
 }

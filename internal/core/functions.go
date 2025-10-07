@@ -23,6 +23,46 @@ func (c *CoreConfig) enrichWithGlob(glob string) (string, error) {
 	return addedContext, nil
 }
 
+func extractCodeModelResponse(respBody []byte) (*CodeModelResponse, error) {
+	var raw json.RawMessage
+	if err := json.Unmarshal(respBody, &raw); err != nil {
+		return nil, fmt.Errorf("invalid JSON: %w", err)
+	}
+
+	try := func(v any) bool {
+		return json.Unmarshal(raw, v) == nil
+	}
+
+	var res CodeModelResponse
+	switch {
+	case len(raw) > 0 && raw[0] == '[':
+		var a1 []CodeModelResponse
+		if try(&a1) && len(a1) > 0 {
+			res = a1[0]
+			break
+		}
+		var a2 []CodeModelResponseWithParameters
+		if try(&a2) && len(a2) > 0 {
+			res = a2[0].Parameters
+			break
+		}
+	default:
+		var o1 CodeModelResponse
+		if try(&o1) {
+			res = o1
+			break
+		}
+		var o2 CodeModelResponseWithParameters
+		if try(&o2) {
+			res = o2.Parameters
+			break
+		}
+		return nil, fmt.Errorf("unrecognized JSON structure")
+	}
+
+	return &res, nil
+}
+
 func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool {
 	ctx := context.Background()
 	promptToSendBedrock := prompt
@@ -57,12 +97,12 @@ func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool
 
 	respBody, err := c.awsConfig.CallAWSBedrock(ctx, modelID, req)
 	if err != nil {
-		pterm.Error.Printf("InvokeModel error: %v\n", err)
+		pterm.Error.Printf("invokeModel error: %v\n", err)
 		return false
 	}
 	var data aws.ChatResponse
 	if err := json.Unmarshal(respBody, &data); err != nil {
-		pterm.Error.Printf("Json Unmarshal error (when parsing Bedrock Body): %v\n", err)
+		pterm.Error.Printf("json Unmarshal error (when parsing Bedrock Body): %v\n", err)
 		return false
 	}
 	for _, choice := range data.Choices {
@@ -103,69 +143,54 @@ func (c *CoreConfig) Code(prompt, personaInstructions, modelID, glob string) boo
 
 	respBody, err := c.awsConfig.CallAWSBedrockConverse(ctx, modelID, req, coderToolConfig)
 	if err != nil {
-		pterm.Error.Printf("Converse error: %v\n", err)
+		pterm.Error.Printf("converse error: %v\n", err)
 		return false
 	}
 	c.logger.LogMessage("[RESPONSE FOR CODE] " + string(respBody) + "\n\n")
 
-	// below goofy-ass logic is required as the llm will not consistently reply back in an array or single object
-	var raw json.RawMessage
-	if err := json.Unmarshal(respBody, &raw); err != nil {
-		pterm.Error.Printf("Json Unmarshal error: %v\n", err)
+	data, err := extractCodeModelResponse(respBody)
+	if err != nil {
+		pterm.Error.Printf("unable to extractCodeModelResponse: %v\n", err)
 		return false
-	}
-	var data CodeModelResponse
-	if raw[0] == '[' { // it's an array
-		var arr []CodeModelResponse
-		if err := json.Unmarshal(raw, &arr); err != nil {
-			pterm.Error.Printf("Array unmarshal error: %v\n", err)
-			return false
-		}
-		data = arr[0]
-	} else { // single object
-		if err := json.Unmarshal(raw, &data); err != nil {
-			pterm.Error.Printf("Object unmarshal error: %v\n", err)
-			return false
-		}
 	}
 
 	c.logger.LogMessage("[RESPONSE] " + data.MarkdownSummary + "\n\n")
 	c.awsConfig.PrintBedrockMessage(data.MarkdownSummary)
 
-	pterm.Info.Printfln("Reviewing each code update, for review one at a time. %d pending updates", len(data.CodeUpdates))
+	pterm.Info.Printfln("reviewing each code update, for review one at a time. %d pending updates", len(data.CodeUpdates))
 
 	for updateIdx, update := range data.CodeUpdates {
-		pterm.Info.Printfln("Updating file: %s (%d/%d)", update.Path, updateIdx+1, len(data.CodeUpdates))
+		pterm.Info.Printfln("updating file: %s (%d/%d)", update.Path, updateIdx+1, len(data.CodeUpdates))
 
 		if _, err := c.toolsConfig.fsToolConfig.UpdateFile(update.Path, update.OldCode, update.NewCode, true); err != nil {
-			pterm.Error.Printfln("Failed to update %s: %v", update.Path, err)
+			pterm.Error.Printfln("failed to update %s: %v", update.Path, err)
 			return false
 		}
 	}
 
 	for addIdx, add := range data.AddCodeFiles {
-		pterm.Info.Printfln("Adding new file: %s (%d/%d)", add.Path, addIdx+1, len(data.AddCodeFiles))
+		pterm.Info.Printfln("adding new file: %s (%d/%d)", add.Path, addIdx+1, len(data.AddCodeFiles))
 		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText(fmt.Sprintf("Create file %s?", add.Path)).Show()
 		if !ok {
-			pterm.Warning.Printfln("Skipped creation of: %s", add.Path)
+			pterm.Warning.Printfln("skipped creation of: %s", add.Path)
 			continue
 		}
 		if err := c.toolsConfig.fsToolConfig.CreateFile(add.Path, add.Content); err != nil {
-			pterm.Error.Printfln("Failed to write %s: %v", add.Path, err)
+			pterm.Error.Printfln("failed to write %s: %v", add.Path, err)
 			return false
 		}
 	}
 
 	for remIdx, rem := range data.RemoveCodeFiles {
-		pterm.Info.Printfln("Removing file: %s (%d/%d)", rem.Path, remIdx+1, len(data.RemoveCodeFiles))
+		pterm.Info.Printfln("removing file: %s (%d/%d)", rem.Path, remIdx+1, len(data.RemoveCodeFiles))
 
 		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText(fmt.Sprintf("Delete file %s?", rem.Path)).Show()
 		if !ok {
-			pterm.Warning.Printfln("Skipped deletion of: %s", rem.Path)
+			pterm.Warning.Printfln("skipped deletion of: %s", rem.Path)
 			continue
 		}
 		if err := c.toolsConfig.fsToolConfig.DeleteFile(rem.Path); err != nil {
-			pterm.Error.Printfln("Failed to write %s: %v", rem.Path, err)
+			pterm.Error.Printfln("failed to write %s: %v", rem.Path, err)
 			return false
 		}
 	}
