@@ -1,7 +1,8 @@
 # Brains
 
 A simple CLI that wraps around Bedrock and generates some abstractions to work around 
-common LLMs.
+common LLMs. I'm using this to learn more about AWS Bedrock and common agentic tools I use 
+like [Aider](https://github.com/Aider-AI/aider).
 
 ## Prerequisites
 - Go 1.22+ installed.

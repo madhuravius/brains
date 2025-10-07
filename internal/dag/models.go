@@ -8,5 +8,7 @@ type Vertex[T any] struct {
 }
 
 type DAG[T any] struct {
-	graph graph.Graph[string, *Vertex[T]]
+	graph      graph.Graph[string, *Vertex[T]]
+	rootVertex *Vertex[T]
+	vertices   map[string]*Vertex[T]
 }

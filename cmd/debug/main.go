@@ -6,6 +6,7 @@ import (
 
 	"brains/internal/aws"
 	"brains/internal/config"
+	"brains/internal/dag"
 	"brains/internal/tools/browser"
 	"brains/internal/tools/file_system"
 
@@ -69,4 +70,23 @@ func main() {
 		pterm.Fatal.Printfln("browser.FetchWebContext: %v", err)
 	}
 	pterm.Info.Printfln("data from web gather: %s", htmlData)
+
+	d, err := dag.NewDAG[int]("_dag")
+	if err != nil {
+		pterm.Fatal.Printfln("dag.NewDAG: %v", err)
+	}
+
+	v1 := &dag.Vertex[int]{Name: "a"}
+	v2 := &dag.Vertex[int]{Name: "b"}
+	v3 := &dag.Vertex[int]{Name: "c"}
+
+	_ = d.AddVertex(v1)
+	_ = d.AddVertex(v2)
+	_ = d.AddVertex(v3)
+
+	d.Connect("root", v1.Name)
+	d.Connect(v1.Name, v2.Name)
+	d.Connect(v2.Name, v3.Name)
+	d.Connect(v1.Name, v3.Name)
+	d.Visualize()
 }

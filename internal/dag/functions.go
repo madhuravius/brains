@@ -2,27 +2,52 @@ package dag
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
+	"github.com/charmbracelet/glamour"
 	"github.com/dominikbraun/graph"
+	"github.com/muesli/termenv"
 )
 
 type SupportedDAGDataTypes interface{ int | string }
 
-func NewDAG[T SupportedDAGDataTypes](rootVertex string) *DAG[T] {
+func NewDAG[T SupportedDAGDataTypes](rootVertex string) (*DAG[T], error) {
 	vertexHash := func(v *Vertex[T]) string {
 		return v.Name
 	}
 
 	g := graph.New(vertexHash, graph.Directed(), graph.Acyclic(), graph.PreventCycles())
-	return &DAG[T]{graph: g}
+	dag := DAG[T]{graph: g, vertices: make(map[string]*Vertex[T])}
+
+	root := &Vertex[T]{Name: rootVertex}
+	err := dag.AddVertex(root)
+	if err != nil {
+		return nil, err
+	}
+	dag.rootVertex = root
+
+	return &dag, nil
 }
 
 func (d *DAG[T]) AddVertex(v *Vertex[T]) error {
-	return d.graph.AddVertex(v)
+	if err := d.graph.AddVertex(v); err != nil {
+		return err
+	}
+	d.vertices[v.Name] = v
+	return nil
+}
+
+func (d *DAG[T]) GetVertices() map[string]*Vertex[T] {
+	return d.vertices
 }
 
 func (d *DAG[T]) Connect(src, dest string) {
 	_ = d.graph.AddEdge(src, dest)
+}
+
+func (d *DAG[T]) GetEdges() ([]graph.Edge[string], error) {
+	return d.graph.Edges()
 }
 
 func (d *DAG[T]) Run() (map[string]T, error) {
@@ -46,12 +71,63 @@ func (d *DAG[T]) Run() (map[string]T, error) {
 			}
 		}
 
-		result, err := v.Run(inputs)
-		if err != nil {
-			return nil, fmt.Errorf("error running vertex %s: %w", name, err)
+		if v.Run != nil {
+			result, err := v.Run(inputs)
+			if err != nil {
+				return nil, fmt.Errorf("error running vertex %s: %w", name, err)
+			}
+			results[name] = result
 		}
-		results[name] = result
 	}
 
 	return results, nil
+}
+
+func (d *DAG[T]) Visualize() {
+	edges, _ := d.graph.Edges()
+
+	adj := make(map[string][]string)
+	for _, e := range edges {
+		adj[e.Source] = append(adj[e.Source], e.Target)
+	}
+
+	var sb strings.Builder
+	sb.WriteString("# DAG Visualization: " + d.rootVertex.Name + "\n\n")
+	visited := make(map[string]bool)
+	for name := range d.vertices {
+		visualizeNode(name, adj, visited, &sb)
+	}
+	r, _ := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(120),
+		glamour.WithColorProfile(termenv.TrueColor),
+	)
+	sortedOut := strings.Split(sb.String(), "\n")
+	sort.Strings(sortedOut)
+	out, _ := r.Render(strings.Join(sortedOut, "\n\n"))
+	fmt.Print(out)
+}
+
+func visualizeNode(name string, adj map[string][]string, visited map[string]bool, sb *strings.Builder) {
+	if visited[name] {
+		return
+	}
+	visited[name] = true
+
+	sb.WriteString("`" + name + "`")
+	children := adj[name]
+	if len(children) > 0 {
+		sb.WriteString(" **->** ")
+		for i, c := range children {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(c)
+		}
+	}
+	sb.WriteString("\n\n")
+
+	for _, c := range children {
+		visualizeNode(c, adj, visited, sb)
+	}
 }
