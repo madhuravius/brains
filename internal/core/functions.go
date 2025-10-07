@@ -106,18 +106,33 @@ func (c *CoreConfig) Code(prompt, personaInstructions, modelID, glob string) boo
 		pterm.Error.Printf("Converse error: %v\n", err)
 		return false
 	}
-	c.logger.LogMessage("[RESPONSE FOR CODE] " + string(respBody))
+	c.logger.LogMessage("[RESPONSE FOR CODE] " + string(respBody) + "\n\n")
 
-	var data CodeModelResponse
-	if err := json.Unmarshal(respBody, &data); err != nil {
-		pterm.Error.Printf("Json Unmarshal error (when parsing Bedrock Body): %v\n", err)
+	// below goofy-ass logic is required as the llm will not consistently reply back in an array or single object
+	var raw json.RawMessage
+	if err := json.Unmarshal(respBody, &raw); err != nil {
+		pterm.Error.Printf("Json Unmarshal error: %v\n", err)
 		return false
 	}
+	var data CodeModelResponse
+	if raw[0] == '[' { // it's an array
+		var arr []CodeModelResponse
+		if err := json.Unmarshal(raw, &arr); err != nil {
+			pterm.Error.Printf("Array unmarshal error: %v\n", err)
+			return false
+		}
+		data = arr[0]
+	} else { // single object
+		if err := json.Unmarshal(raw, &data); err != nil {
+			pterm.Error.Printf("Object unmarshal error: %v\n", err)
+			return false
+		}
+	}
 
-	c.logger.LogMessage("[RESPONSE] " + data.MarkdownSummary)
+	c.logger.LogMessage("[RESPONSE] " + data.MarkdownSummary + "\n\n")
 	c.awsConfig.PrintBedrockMessage(data.MarkdownSummary)
 
-	pterm.Info.Printfln("reviewing each code update, for review one at a time. %d pending updates", len(data.CodeUpdates))
+	pterm.Info.Printfln("Reviewing each code update, for review one at a time. %d pending updates", len(data.CodeUpdates))
 
 	for updateIdx, update := range data.CodeUpdates {
 		pterm.Info.Printfln("Updating file: %s (%d/%d)", update.Path, updateIdx+1, len(data.CodeUpdates))
