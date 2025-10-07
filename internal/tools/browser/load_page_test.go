@@ -4,14 +4,22 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
+	"github.com/go-rod/rod/lib/launcher"
 	"github.com/stretchr/testify/assert"
 
 	"brains/internal/tools/browser"
 )
 
+func init() {
+	launcher.NewBrowser().MustGet()
+	launcher.New().NoSandbox(true).MustLaunch()
+}
+
 func TestFetchWebContextSuccess(t *testing.T) {
+	os.Setenv("ROD_ARGS", "--no-sandbox --disable-setuid-sandbox")
 	html := `<!DOCTYPE html>
 <html>
 <head><title>Test Page</title></head>
