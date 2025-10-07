@@ -8,11 +8,18 @@ import (
 	"strings"
 
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-shiori/go-readability"
 )
 
 func FetchWebContext(ctx context.Context, url string) (string, error) {
-	browser := rod.New().MustConnect()
+	rodUrl := launcher.New().
+		Headless(true).
+		Set("no-sandbox").
+		Set("disable-setuid-sandbox").
+		MustLaunch()
+
+	browser := rod.New().ControlURL(rodUrl).MustConnect()
 	defer browser.MustClose()
 
 	page := browser.MustPage(url)
