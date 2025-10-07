@@ -6,6 +6,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      DISABLE_ROD_SANDBOX: "true"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
