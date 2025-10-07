@@ -2,6 +2,7 @@ package aws
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -21,9 +22,24 @@ var newSTSClientFunc = func(cfg aws.Config, optFns ...func(*sts.Options)) STSCli
 }
 
 func NewAWSConfig(region string) *AWSConfig {
-	return &AWSConfig{
-		region: region,
+	modelsPricing, err := getModelsPricing()
+	if err != nil {
+		return nil
 	}
+
+	return &AWSConfig{
+		region:  region,
+		pricing: modelsPricing,
+	}
+}
+
+func getModelsPricing() ([]modelPricing, error) {
+	var out []modelPricing
+	if err := json.Unmarshal(rawModelsPricing, &out); err != nil {
+		pterm.Error.Printf("unable to load SDK config, %s\n", err.Error())
+		return nil, err
+	}
+	return out, nil
 }
 
 func (a *AWSConfig) SetAndValidateCredentials() bool {

@@ -69,7 +69,7 @@ func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool
 		c.logger.LogMessage("[RESPONSE] " + choice.Message.Content)
 		c.awsConfig.PrintBedrockMessage(choice.Message.Content)
 	}
-	c.awsConfig.PrintCost(data.Usage)
+	c.awsConfig.PrintCost(data.Usage, modelID)
 	c.awsConfig.PrintContext(data.Usage)
 	return true
 }
@@ -203,7 +203,7 @@ func (c *CoreConfig) ValidateBedrockConfiguration(modelID string) bool {
 		c.awsConfig.PrintBedrockMessage(choice.Message.Content)
 		c.logger.LogMessage("[RESPONSE] " + choice.Message.Content)
 	}
-	c.awsConfig.PrintCost(data.Usage)
+	c.awsConfig.PrintCost(data.Usage, modelID)
 	c.awsConfig.PrintContext(data.Usage)
 	return true
 }

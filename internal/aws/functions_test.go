@@ -136,7 +136,7 @@ func TestCallAWSBedrockConverseError(t *testing.T) {
 func TestPrintCost(t *testing.T) {
 	cfg := &awsBrains.AWSConfig{}
 	assert.NotPanics(t, func() {
-		cfg.PrintCost(map[string]any{"prompt_tokens": 10, "completion_tokens": 5})
+		cfg.PrintCost(map[string]any{"prompt_tokens": 10, "completion_tokens": 5}, "modelid")
 	})
 }
 

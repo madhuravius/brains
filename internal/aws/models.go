@@ -16,11 +16,20 @@ type AggregatedModelPricing struct {
 	OutputCostPer1kTokens float64
 }
 
+type modelPricing struct {
+	ModelID               string  `json:"ModelID"`
+	ModelName             string  `json:"ModelName"`
+	InputCostPer1kTokens  float64 `json:"InputCostPer1kTokens"`
+	OutputCostPer1kTokens float64 `json:"OutputCostPer1kTokens"`
+}
+
 type AWSConfig struct {
 	cfg     aws.Config
 	region  string
 	invoker BedrockInvoker
 	logger  brainsConfig.SimpleLogger
+
+	pricing []modelPricing
 }
 
 type ResponseMessage struct {

@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/charmbracelet/glamour"
+	"github.com/muesli/termenv"
 	"github.com/pterm/pterm"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
@@ -21,6 +22,7 @@ func (f *FileSystemConfig) DeleteFile(filePath string) error {
 		r, _ := glamour.NewTermRenderer(
 			glamour.WithAutoStyle(),
 			glamour.WithWordWrap(100),
+			glamour.WithColorProfile(termenv.ANSI256),
 		)
 		renderedDiff, _ := r.Render(fmt.Sprintf("diff\n%s\n", diffText))
 		fmt.Println(renderedDiff)

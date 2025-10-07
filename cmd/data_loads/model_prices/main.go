@@ -211,7 +211,7 @@ func main() {
 		if mkErr := os.MkdirAll("data", 0o750); mkErr != nil {
 			pterm.Error.Printf("Failed to create data directory: %v\n", mkErr)
 		} else {
-			if writeErr := os.WriteFile("data/models_pricing.json", jsonBytes, 0o644); writeErr !=
+			if writeErr := os.WriteFile("internal/aws/data/models_pricing.json", jsonBytes, 0o644); writeErr !=
 				nil {
 				pterm.Error.Printf("Failed to write models_pricing.json: %v\n", writeErr)
 			} else {
