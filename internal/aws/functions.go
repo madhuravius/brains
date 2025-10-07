@@ -61,7 +61,12 @@ func (a *AWSConfig) CallAWSBedrock(ctx context.Context, modelID string, req Bedr
 	return resp.Body, nil
 }
 
-func (a *AWSConfig) CallAWSBedrockConverse(ctx context.Context, modelID string, req BedrockRequest) ([]byte, error) {
+func (a *AWSConfig) CallAWSBedrockConverse(
+	ctx context.Context,
+	modelID string,
+	req BedrockRequest,
+	toolConfig *bedrockruntimeTypes.ToolConfiguration,
+) ([]byte, error) {
 	client := a.GetInvoker()
 
 	messages := []bedrockruntimeTypes.Message{}
@@ -82,6 +87,10 @@ func (a *AWSConfig) CallAWSBedrockConverse(ctx context.Context, modelID string, 
 	input := &bedrockruntime.ConverseInput{
 		ModelId:  aws.String(modelID),
 		Messages: messages,
+	}
+
+	if toolConfig != nil {
+		input.ToolConfig = toolConfig
 	}
 
 	spinner, _ := pterm.DefaultSpinner.Start("Loading response from AWS Bedrock (Converse)")

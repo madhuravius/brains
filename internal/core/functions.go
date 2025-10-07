@@ -101,14 +101,14 @@ func (c *CoreConfig) Code(prompt, personaInstructions, modelID, glob string) boo
 		},
 	}
 
-	respBody, err := c.awsConfig.CallAWSBedrockConverse(ctx, modelID, req)
+	respBody, err := c.awsConfig.CallAWSBedrockConverse(ctx, modelID, req, coderToolConfig)
 	if err != nil {
 		pterm.Error.Printf("Converse error: %v\n", err)
 		return false
 	}
 	c.logger.LogMessage("[RESPONSE FOR CODE] " + string(respBody))
 
-	var data aws.CodeModelResponse
+	var data CodeModelResponse
 	if err := json.Unmarshal(respBody, &data); err != nil {
 		pterm.Error.Printf("Json Unmarshal error (when parsing Bedrock Body): %v\n", err)
 		return false

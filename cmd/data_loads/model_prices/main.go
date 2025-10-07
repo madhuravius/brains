@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -14,6 +15,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/bedrock"
 	"github.com/aws/aws-sdk-go-v2/service/pricing"
+	"github.com/pterm/pterm"
+
+	brainsAws "brains/internal/aws"
 )
 
 const REGION = "us-east-1"
@@ -24,14 +28,6 @@ type ModelDetails struct {
 }
 
 type PricingDetails struct {
-	InputCostPer1kTokens  float64
-	OutputCostPer1kTokens float64
-}
-
-type CombinedInfo struct {
-	ModelName             string
-	ModelID               string
-	ProviderName          string
 	InputCostPer1kTokens  float64
 	OutputCostPer1kTokens float64
 }
@@ -168,13 +164,13 @@ func main() {
 		log.Fatalf("Error fetching pricing information: %v", pricingErr)
 	}
 
-	var combinedData []CombinedInfo
+	var combinedData []brainsAws.AggregatedModelPricing
 
 	for modelName, details := range availableModels {
 		for priceName, prices := range modelPricing {
 			if strings.Contains(strings.ToLower(modelName), strings.ToLower(priceName)) ||
 				strings.Contains(strings.ToLower(priceName), strings.ToLower(modelName)) {
-				combinedData = append(combinedData, CombinedInfo{
+				combinedData = append(combinedData, brainsAws.AggregatedModelPricing{
 					ModelName:             modelName,
 					ModelID:               details.ModelID,
 					ProviderName:          details.ProviderName,
@@ -206,5 +202,21 @@ func main() {
 		fmt.Printf("  - Input Cost / 1k tokens: $%.6f\n", item.InputCostPer1kTokens)
 		fmt.Printf("  - Output Cost / 1k tokens: $%.6f\n", item.OutputCostPer1kTokens)
 		fmt.Println("----------------------------------------")
+	}
+
+	jsonBytes, err := json.MarshalIndent(combinedData, "", "  ")
+	if err != nil {
+		pterm.Error.Printf("Failed to marshal pricing data to JSON: %v\n", err)
+	} else {
+		if mkErr := os.MkdirAll("data", 0o750); mkErr != nil {
+			pterm.Error.Printf("Failed to create data directory: %v\n", mkErr)
+		} else {
+			if writeErr := os.WriteFile("data/models_pricing.json", jsonBytes, 0o644); writeErr !=
+				nil {
+				pterm.Error.Printf("Failed to write models_pricing.json: %v\n", writeErr)
+			} else {
+				pterm.Success.Println("Pricing data written to data/models_pricing.json")
+			}
+		}
 	}
 }

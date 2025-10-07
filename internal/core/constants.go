@@ -1,5 +1,16 @@
 package core
 
+import (
+	_ "embed"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/document"
+	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
+)
+
+//go:embed schemas/code.json
+var codeJSONSchema string
+
 const CoderPromptPostProcess = `
 You are a code-editing assistant.
 
@@ -7,17 +18,34 @@ Ensure that when outputting the file with changes, you absolutely include the fu
 
 Return **only JSON** describing the changes, no explanations. 
 
-Return JSON in this format:
+Return JSON in this format, strictly with the following schema:
 {
-  "markdown_summary": "some markdown summarizing changes and relevant code snippets in markdown",
+  "markdown_summary": "string",
   "code_updates": [
-    {"path": "example_file_name.go", "old_code": "...", "new_code": "..."}
+    {"path": "string", "old_code": "string", "new_code": "string"}
   ],
-    "add_code_files": [
-    {"path": "new_file.go", "content": "..."}
+  "add_code_files": [
+    {"path": "string", "content": "string"}
   ],
-    "remove_code_files": [
-    {"path": "old_file.go"}
+  "remove_code_files": [
+    {"path": "string"}
   ]
 }
+
+Do NOT include extra text or commentary. Only return JSON.
+Analyze the code changes and generate the JSON accordingly.
 `
+
+var coderToolConfig = &types.ToolConfiguration{
+	Tools: []types.Tool{
+		&types.ToolMemberToolSpec{
+			Value: types.ToolSpecification{
+				Name:        aws.String("code_update"),
+				Description: aws.String("Generate code updates in a specific schema"),
+				InputSchema: &types.ToolInputSchemaMemberJson{
+					Value: document.NewLazyDocument(codeJSONSchema),
+				},
+			},
+		},
+	},
+}

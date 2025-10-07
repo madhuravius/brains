@@ -8,6 +8,14 @@ import (
 	brainsConfig "brains/internal/config"
 )
 
+type AggregatedModelPricing struct {
+	ModelName             string
+	ModelID               string
+	ProviderName          string
+	InputCostPer1kTokens  float64
+	OutputCostPer1kTokens float64
+}
+
 type AWSConfig struct {
 	cfg     aws.Config
 	region  string
