@@ -3,18 +3,24 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/glamour"
 	"github.com/muesli/termenv"
 )
 
-func (b *BrainsConfig) initLogger(enabled bool) error {
+func (b *BrainsConfig) InitLogger(enabled bool) error {
 	b.logger.enabled = enabled
 	if !enabled {
 		return nil
 	}
-	f, err := os.OpenFile(".brains.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	logDir := filepath.Dir(LogPath)
+	err := os.MkdirAll(logDir, 0o750)
+	if err != nil {
+		return err
+	}
+	f, err := os.OpenFile(LogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 	if err != nil {
 		return err
 	}
@@ -32,12 +38,9 @@ func (b *BrainsConfig) LogMessage(msg string) {
 }
 
 func (b *BrainsConfig) GetLogContext() string {
-	data, err := os.ReadFile(".brains.log")
+	data, err := os.ReadFile(LogPath)
 	if err != nil {
-		if len(b.logger.mem) == 0 {
-			return ""
-		}
-		return strings.Join(b.logger.mem, "\n")
+		return ""
 	}
 	return string(data)
 }
@@ -68,13 +71,12 @@ func (b *BrainsConfig) Reset() error {
 
 	if b.logger.file != nil {
 		_ = b.logger.file.Close()
-		_ = os.Remove(".brains.log")
+		_ = os.Remove(LogPath)
 	}
-	f, err := os.OpenFile(".brains.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	f, err := os.OpenFile(LogPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		return err
 	}
 	b.logger.file = f
-	b.logger.mem = nil
 	return nil
 }

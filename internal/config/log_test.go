@@ -1,4 +1,4 @@
-package config
+package config_test
 
 import (
 	"bufio"
@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"brains/internal/config"
 )
 
 func TestInitLoggerDisabled(t *testing.T) {
@@ -17,11 +19,11 @@ func TestInitLoggerDisabled(t *testing.T) {
 	_ = os.Chdir(tmp)
 	defer func() { _ = os.Chdir(orig) }()
 
-	b := &BrainsConfig{}
-	err := b.initLogger(false)
+	b := &config.BrainsConfig{}
+	err := b.InitLogger(false)
 	assert.NoError(t, err)
 
-	_, err = os.Stat(".brains.log")
+	_, err = os.Stat(config.LogPath)
 	assert.True(t, os.IsNotExist(err), "log file must not be created when disabled")
 }
 
@@ -31,11 +33,11 @@ func TestInitLoggerCreatesFile(t *testing.T) {
 	_ = os.Chdir(tmp)
 	defer func() { _ = os.Chdir(orig) }()
 
-	b := &BrainsConfig{}
-	err := b.initLogger(true)
+	b := &config.BrainsConfig{}
+	err := b.InitLogger(true)
 	assert.NoError(t, err)
 
-	_, err = os.Stat(".brains.log")
+	_, err = os.Stat(config.LogPath)
 	assert.NoError(t, err, "log file should exist after initLogger")
 }
 
@@ -45,8 +47,8 @@ func TestLogMessageAndGetLogContext(t *testing.T) {
 	_ = os.Chdir(tmp)
 	defer func() { _ = os.Chdir(orig) }()
 
-	b := &BrainsConfig{}
-	_ = b.initLogger(true)
+	b := &config.BrainsConfig{}
+	_ = b.InitLogger(true)
 
 	b.LogMessage("first line")
 	b.LogMessage("second line")
@@ -56,25 +58,14 @@ func TestLogMessageAndGetLogContext(t *testing.T) {
 	assert.Contains(t, ctx, "second line")
 }
 
-func TestGetLogContextFallbackToMem(t *testing.T) {
-	b := &BrainsConfig{}
-	b.logger.mem = []string{"first line", "second line"}
-
-	_, err := os.Stat(".brains.log")
-	assert.True(t, os.IsNotExist(err))
-
-	ctx := b.GetLogContext()
-	assert.Equal(t, "first line\nsecond line", ctx)
-}
-
 func TestPrintLogsTagConversion(t *testing.T) {
 	tmp := t.TempDir()
 	orig, _ := os.Getwd()
 	_ = os.Chdir(tmp)
 	defer func() { _ = os.Chdir(orig) }()
 
-	b := &BrainsConfig{}
-	_ = b.initLogger(true)
+	b := &config.BrainsConfig{}
+	_ = b.InitLogger(true)
 	b.LogMessage("[REQUEST] ask")
 	b.LogMessage("[RESPONSE] answer")
 	b.LogMessage("[RESPONSE FOR CODE] diff")
@@ -103,8 +94,8 @@ func TestResetClearsLog(t *testing.T) {
 	_ = os.Chdir(tmp)
 	defer func() { _ = os.Chdir(orig) }()
 
-	b := &BrainsConfig{}
-	_ = b.initLogger(true)
+	b := &config.BrainsConfig{}
+	_ = b.InitLogger(true)
 
 	b.LogMessage("tmp")
 	assert.NotEmpty(t, b.GetLogContext())
@@ -112,7 +103,7 @@ func TestResetClearsLog(t *testing.T) {
 	assert.NoError(t, b.Reset())
 	assert.Empty(t, b.GetLogContext())
 
-	info, err := os.Stat(".brains.log")
+	info, err := os.Stat(config.LogPath)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), info.Size())
 }
@@ -123,8 +114,8 @@ func TestDisabledLoggerDoesNothing(t *testing.T) {
 	_ = os.Chdir(tmp)
 	defer func() { _ = os.Chdir(orig) }()
 
-	b := &BrainsConfig{}
-	_ = b.initLogger(false)
+	b := &config.BrainsConfig{}
+	_ = b.InitLogger(false)
 
 	b.LogMessage("nope")
 	assert.Empty(t, b.GetLogContext())

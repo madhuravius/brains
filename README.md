@@ -5,7 +5,8 @@ common LLMs.
 
 ## Prerequisites
 - Go 1.22+ installed.
-- Valid AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, optional `AWS_SESSION_TOKEN`) with permission to invoke Bedrock models.
+- Valid AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, optional `AWS_SESSION_TOKEN`) 
+with permission to invoke Bedrock models.
 
 ## Features
 
@@ -13,8 +14,9 @@ common LLMs.
   * `ask` - ask questions and get a rich response
   * `code` - write code and/or files on your file system based on a request
 * Tools 
-  * `file_system` - CRUD on files in your local FS
   * `browser` - execute scraping functions with a Chrome-based browser
+  * `file_system` - CRUD on files in your local FS
+  * `repo_map` - uses tree-sitter to generate tags, symbols, and mapping of the entire repository
 
 ## Build
 

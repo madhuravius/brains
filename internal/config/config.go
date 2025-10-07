@@ -7,15 +7,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var DefaultConfig = BrainsConfig{
-	LoggingEnabled: true,
-	AWSRegion:      "us-west-2",
-	Model:          "openai.gpt-oss-120b-1:0",
-	Personas:       map[string]string{},
-	DefaultContext: "**/*",
-	DefaultPersona: "",
-}
-
 func LoadConfig() (*BrainsConfig, error) {
 	paths := []string{}
 	if cwd, err := os.Getwd(); err == nil {
@@ -54,7 +45,7 @@ func LoadConfig() (*BrainsConfig, error) {
 		cfg.Model = DefaultConfig.Model
 	}
 
-	if err := cfg.initLogger(cfg.LoggingEnabled); err != nil {
+	if err := cfg.InitLogger(cfg.LoggingEnabled); err != nil {
 		return nil, err
 	}
 	return &cfg, nil
