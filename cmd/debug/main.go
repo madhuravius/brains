@@ -58,7 +58,7 @@ func main() {
 		pterm.Fatal.Printfln("file_system.NewFileSystemConfig: %v", err)
 	}
 
-	fsData, err := fs.SetContextFromGlob("readme.md")
+	fsData, err := fs.SetContextFromGlob("README.md")
 	if err != nil {
 		pterm.Fatal.Printfln("file_system.SetContextFromGlob: %v", err)
 	}
