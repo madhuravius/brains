@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +12,6 @@ import (
 )
 
 func TestFetchWebContextSuccess(t *testing.T) {
-	os.Setenv("ROD_ARGS", "--no-sandbox --disable-setuid-sandbox")
 	html := `<!DOCTYPE html>
 <html>
 <head><title>Test Page</title></head>
