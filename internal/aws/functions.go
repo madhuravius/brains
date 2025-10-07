@@ -15,12 +15,6 @@ import (
 	"github.com/pterm/pterm"
 )
 
-const (
-	inputPricePerK  = 0.00015
-	outputPricePerK = 0.0006
-	tokenLimit      = 128000
-)
-
 func (a *AWSConfig) DescribeModel(model string) *types.FoundationModelSummary {
 	client := a.GetInvoker()
 	out, err := client.ListFoundationModels(context.Background(),
