@@ -11,5 +11,8 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: '>=1.18.0'
+      - uses: browser-actions/setup-chrome@v2
+        with:
+          install-chromedriver: true
       - run: go install gotest.tools/gotestsum@latest
       - run: make test
