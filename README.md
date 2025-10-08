@@ -2,7 +2,8 @@
 
 A simple CLI that wraps around Bedrock and generates some abstractions to work around 
 common LLMs. I'm using this to learn more about AWS Bedrock and common agentic tools I use 
-like [Aider](https://github.com/Aider-AI/aider).
+like [Aider](https://github.com/Aider-AI/aider), initially mirroring some of those features
+as I learn more about how this tooling works.
 
 ## Prerequisites
 - Go 1.22+ installed.
