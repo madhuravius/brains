@@ -5,8 +5,7 @@ import "github.com/dominikbraun/graph"
 type Vertex[T any, D any] struct {
 	Name string
 	Run  func(inputs map[string]T) (T, error)
-
-	dag *DAG[T, D]
+	DAG  *DAG[T, D]
 }
 
 type DAG[T any, D any] struct {
