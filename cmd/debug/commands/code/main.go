@@ -13,7 +13,7 @@ import (
 
 func main() {
 	const (
-		glob    = "cmd/debug/commands/ask/main.go"
+		glob    = "README.md"
 		modelID = "openai.gpt-oss-120b-1:0"
 		prompt  = "make suggestions to the README.md in root based on this example: https://raw.githubusercontent.com/RichardLitt/standard-readme/refs/heads/main/example-readmes/minimal-readme.md"
 	)

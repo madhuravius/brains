@@ -50,7 +50,7 @@ func (c *CoreConfig) CodeFlow(ctx context.Context, llmRequest *LLMRequest) error
 	_ = codeDAG.AddVertex(researchVertex)
 
 	codeVertex := &dag.Vertex[string, *CodeData]{
-		Name: "ask",
+		Name: "code",
 		DAG:  codeDAG,
 		Run:  codeData.generateCodeFunction(c, llmRequest),
 	}
