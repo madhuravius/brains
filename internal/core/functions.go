@@ -74,7 +74,7 @@ func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool
 	return true
 }
 
-func (c *CoreConfig) Research(modelID, glob string) *ResearchActions {
+func (c *CoreConfig) Research(prompt, modelID, glob string) *ResearchActions {
 	ctx := context.Background()
 
 	promptToSendBedrock := ""
@@ -85,7 +85,7 @@ func (c *CoreConfig) Research(modelID, glob string) *ResearchActions {
 	}
 	promptToSendBedrock += addedContext
 	if logCtx := c.logger.GetLogContext(); logCtx != "" {
-		promptToSendBedrock += fmt.Sprintf("%s\\n%s", logCtx, GeneralResearchActivities)
+		promptToSendBedrock += fmt.Sprintf("%s\n%s\n%s", logCtx, prompt, GeneralResearchActivities)
 	}
 
 	req := aws.BedrockRequest{
