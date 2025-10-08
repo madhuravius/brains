@@ -23,44 +23,75 @@ func (c *CoreConfig) enrichWithGlob(glob string) (string, error) {
 	return addedContext, nil
 }
 
-func extractCodeModelResponse(respBody []byte) (*CodeModelResponse, error) {
+func ExtractCodeModelResponse(respBody []byte) (*CodeModelResponse, error) {
 	var raw json.RawMessage
 	if err := json.Unmarshal(respBody, &raw); err != nil {
 		return nil, fmt.Errorf("invalid JSON: %w", err)
 	}
 
-	try := func(v any) bool {
-		return json.Unmarshal(raw, v) == nil
+	isHydrated := func(r CodeModelResponse) bool {
+		return r.MarkdownSummary != "" ||
+			len(r.CodeUpdates) > 0 ||
+			len(r.AddCodeFiles) > 0 ||
+			len(r.RemoveCodeFiles) > 0
 	}
 
-	var res CodeModelResponse
-	switch {
-	case len(raw) > 0 && raw[0] == '[':
-		var a1 []CodeModelResponse
-		if try(&a1) && len(a1) > 0 {
-			res = a1[0]
-			break
+	tryDecode := func(target any, extract func() CodeModelResponse) (*CodeModelResponse, bool) {
+		if err := json.Unmarshal(raw, target); err != nil {
+			return nil, false
 		}
-		var a2 []CodeModelResponseWithParameters
-		if try(&a2) && len(a2) > 0 {
-			res = a2[0].Parameters
-			break
+		out := extract()
+		if !isHydrated(out) {
+			return nil, false
 		}
-	default:
-		var o1 CodeModelResponse
-		if try(&o1) {
-			res = o1
-			break
-		}
-		var o2 CodeModelResponseWithParameters
-		if try(&o2) {
-			res = o2.Parameters
-			break
-		}
-		return nil, fmt.Errorf("unrecognized JSON structure")
+		return &out, true
 	}
 
-	return &res, nil
+	// Array variants
+	if len(raw) > 0 && raw[0] == '[' {
+		if r, ok := tryDecode(&[]CodeModelResponse{}, func() CodeModelResponse {
+			a := []CodeModelResponse{}
+			_ = json.Unmarshal(raw, &a)
+			if len(a) > 0 {
+				return a[0]
+			}
+			return CodeModelResponse{}
+		}); ok {
+			return r, nil
+		}
+
+		if r, ok := tryDecode(&[]CodeModelResponseWithParameters{}, func() CodeModelResponse {
+			a := []CodeModelResponseWithParameters{}
+			_ = json.Unmarshal(raw, &a)
+			if len(a) > 0 {
+				return a[0].Parameters
+			}
+			return CodeModelResponse{}
+		}); ok {
+			return r, nil
+		}
+
+		return nil, fmt.Errorf("could not interpret JSON array as known types")
+	}
+
+	// Object variants
+	if r, ok := tryDecode(&CodeModelResponse{}, func() CodeModelResponse {
+		var v CodeModelResponse
+		_ = json.Unmarshal(raw, &v)
+		return v
+	}); ok {
+		return r, nil
+	}
+
+	if r, ok := tryDecode(&CodeModelResponseWithParameters{}, func() CodeModelResponse {
+		var v CodeModelResponseWithParameters
+		_ = json.Unmarshal(raw, &v)
+		return v.Parameters
+	}); ok {
+		return r, nil
+	}
+
+	return nil, fmt.Errorf("unrecognized or empty JSON structure")
 }
 
 func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool {
@@ -148,7 +179,7 @@ func (c *CoreConfig) Code(prompt, personaInstructions, modelID, glob string) boo
 	}
 	c.logger.LogMessage("[RESPONSE FOR CODE] " + string(respBody) + "\n\n")
 
-	data, err := extractCodeModelResponse(respBody)
+	data, err := ExtractCodeModelResponse(respBody)
 	if err != nil {
 		pterm.Error.Printf("unable to extractCodeModelResponse: %v\n", err)
 		return false
