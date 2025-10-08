@@ -6,6 +6,68 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 )
 
+const GeneralResearchActivities = `
+You are a research augmentation assistant.
+
+Your sole purpose is to support the parent prompt by gathering *only the minimal additional information necessary* to complete its specific task accurately.
+
+You must:
+- Use existing URLs provided in the prompt only if they are relevant and necessary.
+- Strictly limit all research and retrieval to the direct requirements of the parent task.
+- Avoid redundant or speculative research outside the task scope.
+
+Return **only JSON**, with the following exact schema:
+{
+  "markdown_summary": "string",
+  "research_actions": {
+    "urls_recommended": ["string"],
+  }
+}
+
+- "markdown_summary": a concise markdown summary of what was found.
+- "research_actions": explicitly list which URLs need to be searched
+
+Do NOT include explanations, reasoning steps, or extra text outside of the JSON.
+Return valid JSON only.
+`
+
+var researcherToolConfig = &types.ToolConfiguration{
+	Tools: []types.Tool{
+		&types.ToolMemberToolSpec{
+			Value: types.ToolSpecification{
+				Name:        aws.String("researcher"),
+				Description: aws.String("Gather minimal external information to support the parent prompt’s specific task"),
+				InputSchema: &types.ToolInputSchemaMemberJson{
+					Value: document.NewLazyDocument(map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"markdown_summary": map[string]any{
+								"type":        "string",
+								"description": "Concise markdown summary of the relevant information found.",
+							},
+							"research_actions": map[string]any{
+								"type": "object",
+								"properties": map[string]any{
+									"urls_recommended": map[string]any{
+										"type":        "array",
+										"items":       map[string]any{"type": "string"},
+										"description": "List of URLs that should be researched to supplement the parent prompt.",
+									},
+								},
+								"required": []string{"urls_recommended"},
+							},
+						},
+						"required": []string{"markdown_summary", "research_actions"},
+					}),
+				},
+			},
+		},
+	},
+	ToolChoice: &types.ToolChoiceMemberAny{
+		Value: types.AnyToolChoice{},
+	},
+}
+
 const CoderPromptPostProcess = `
 You are a code-editing assistant.
 
