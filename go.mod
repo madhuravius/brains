@@ -13,7 +13,6 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.9.1
 	github.com/charmbracelet/glamour v0.10.0
 	github.com/dominikbraun/graph v0.23.0
-	github.com/fatih/color v1.18.0
 	github.com/go-rod/rod v0.116.2
 	github.com/go-shiori/go-readability v0.0.0-20250217085726-9f5bf5ca7612
 	github.com/muesli/termenv v0.16.0
@@ -59,7 +58,6 @@ require (
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/lithammer/fuzzysearch v1.1.8 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.27 // indirect

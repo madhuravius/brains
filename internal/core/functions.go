@@ -23,77 +23,6 @@ func (c *CoreConfig) enrichWithGlob(glob string) (string, error) {
 	return addedContext, nil
 }
 
-func ExtractCodeModelResponse(respBody []byte) (*CodeModelResponse, error) {
-	var raw json.RawMessage
-	if err := json.Unmarshal(respBody, &raw); err != nil {
-		return nil, fmt.Errorf("invalid JSON: %w", err)
-	}
-
-	isHydrated := func(r CodeModelResponse) bool {
-		return r.MarkdownSummary != "" ||
-			len(r.CodeUpdates) > 0 ||
-			len(r.AddCodeFiles) > 0 ||
-			len(r.RemoveCodeFiles) > 0
-	}
-
-	tryDecode := func(target any, extract func() CodeModelResponse) (*CodeModelResponse, bool) {
-		if err := json.Unmarshal(raw, target); err != nil {
-			return nil, false
-		}
-		out := extract()
-		if !isHydrated(out) {
-			return nil, false
-		}
-		return &out, true
-	}
-
-	// Array variants
-	if len(raw) > 0 && raw[0] == '[' {
-		if r, ok := tryDecode(&[]CodeModelResponse{}, func() CodeModelResponse {
-			a := []CodeModelResponse{}
-			_ = json.Unmarshal(raw, &a)
-			if len(a) > 0 {
-				return a[0]
-			}
-			return CodeModelResponse{}
-		}); ok {
-			return r, nil
-		}
-
-		if r, ok := tryDecode(&[]CodeModelResponseWithParameters{}, func() CodeModelResponse {
-			a := []CodeModelResponseWithParameters{}
-			_ = json.Unmarshal(raw, &a)
-			if len(a) > 0 {
-				return a[0].Parameters
-			}
-			return CodeModelResponse{}
-		}); ok {
-			return r, nil
-		}
-
-		return nil, fmt.Errorf("could not interpret JSON array as known types")
-	}
-
-	// Object variants
-	if r, ok := tryDecode(&CodeModelResponse{}, func() CodeModelResponse {
-		var v CodeModelResponse
-		_ = json.Unmarshal(raw, &v)
-		return v
-	}); ok {
-		return r, nil
-	}
-
-	if r, ok := tryDecode(&CodeModelResponseWithParameters{}, func() CodeModelResponse {
-		var v CodeModelResponseWithParameters
-		_ = json.Unmarshal(raw, &v)
-		return v.Parameters
-	}); ok {
-		return r, nil
-	}
-
-	return nil, fmt.Errorf("unrecognized or empty JSON structure")
-}
-
 func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool {
 	ctx := context.Background()
 	promptToSendBedrock := prompt
@@ -145,6 +74,53 @@ func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool
 	return true
 }
 
+func (c *CoreConfig) Research(modelID, glob string) *ResearchActions {
+	ctx := context.Background()
+
+	promptToSendBedrock := ""
+	addedContext, err := c.enrichWithGlob(glob)
+
+	if err != nil {
+		return nil
+	}
+	promptToSendBedrock += addedContext
+	if logCtx := c.logger.GetLogContext(); logCtx != "" {
+		promptToSendBedrock += fmt.Sprintf("%s\\n%s", logCtx, GeneralResearchActivities)
+	}
+
+	req := aws.BedrockRequest{
+		Messages: []aws.BedrockMessage{
+			{
+				Role: "user",
+				Content: []aws.BedrockContent{
+					{
+						Type: "text",
+						Text: promptToSendBedrock,
+					},
+				},
+			},
+		},
+	}
+
+	respBody, err := c.awsConfig.CallAWSBedrockConverse(ctx, modelID, req, researcherToolConfig)
+	if err != nil {
+		pterm.Error.Printf("converse error: %v\n", err)
+		return nil
+	}
+	c.logger.LogMessage("[RESPONSE FOR RESEARCH] " + string(respBody) + "\n\n")
+
+	data, err := ExtractResponse(
+		respBody,
+		UnwrapFunc[ResearchModelResponse, ResearchModelResponseWithParameters](),
+	)
+	if err != nil {
+		pterm.Error.Printf("unable to extractCodeModelResponse: %v\n", err)
+		return nil
+	}
+
+	return &data.ResearchActions
+}
+
 func (c *CoreConfig) Code(prompt, personaInstructions, modelID, glob string) bool {
 	ctx := context.Background()
 
@@ -179,7 +155,10 @@ func (c *CoreConfig) Code(prompt, personaInstructions, modelID, glob string) boo
 	}
 	c.logger.LogMessage("[RESPONSE FOR CODE] " + string(respBody) + "\n\n")
 
-	data, err := ExtractCodeModelResponse(respBody)
+	data, err := ExtractResponse(
+		respBody,
+		UnwrapFunc[CodeModelResponse, CodeModelResponseWithParameters](),
+	)
 	if err != nil {
 		pterm.Error.Printf("unable to extractCodeModelResponse: %v\n", err)
 		return false

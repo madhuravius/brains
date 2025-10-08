@@ -16,6 +16,14 @@ type CoreConfig struct {
 	logger      brainsConfig.SimpleLogger
 }
 
+type Hydratable interface {
+	IsHydrated() bool
+}
+
+type HasParameters[T any] interface {
+	GetParameters() T
+}
+
 type CodeUpdate struct {
 	Path    string `json:"path"`
 	OldCode string `json:"old_code"`
@@ -41,4 +49,18 @@ type CodeModelResponse struct {
 type CodeModelResponseWithParameters struct {
 	Name       string            `json:"name"`
 	Parameters CodeModelResponse `json:"parameters"`
+}
+
+type ResearchActions struct {
+	UrlsRecommended []string
+}
+
+type ResearchModelResponse struct {
+	MarkdownSummary string          `json:"markdown_summary"`
+	ResearchActions ResearchActions `json:"research_actions"`
+}
+
+type ResearchModelResponseWithParameters struct {
+	Name       string                `json:"name"`
+	Parameters ResearchModelResponse `json:"parameters"`
 }
