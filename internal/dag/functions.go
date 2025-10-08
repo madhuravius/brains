@@ -12,15 +12,15 @@ import (
 
 type SupportedDAGDataTypes interface{ int | string }
 
-func NewDAG[T SupportedDAGDataTypes](rootVertex string) (*DAG[T], error) {
-	vertexHash := func(v *Vertex[T]) string {
+func NewDAG[T SupportedDAGDataTypes, D any](rootVertex string) (*DAG[T, D], error) {
+	vertexHash := func(v *Vertex[T, D]) string {
 		return v.Name
 	}
 
 	g := graph.New(vertexHash, graph.Directed(), graph.Acyclic(), graph.PreventCycles())
-	dag := DAG[T]{graph: g, vertices: make(map[string]*Vertex[T])}
+	dag := DAG[T, D]{graph: g, vertices: make(map[string]*Vertex[T, D])}
 
-	root := &Vertex[T]{Name: rootVertex}
+	root := &Vertex[T, D]{Name: rootVertex}
 	err := dag.AddVertex(root)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func NewDAG[T SupportedDAGDataTypes](rootVertex string) (*DAG[T], error) {
 	return &dag, nil
 }
 
-func (d *DAG[T]) AddVertex(v *Vertex[T]) error {
+func (d *DAG[T, D]) AddVertex(v *Vertex[T, D]) error {
 	if err := d.graph.AddVertex(v); err != nil {
 		return err
 	}
@@ -38,19 +38,19 @@ func (d *DAG[T]) AddVertex(v *Vertex[T]) error {
 	return nil
 }
 
-func (d *DAG[T]) GetVertices() map[string]*Vertex[T] {
+func (d *DAG[T, D]) GetVertices() map[string]*Vertex[T, D] {
 	return d.vertices
 }
 
-func (d *DAG[T]) Connect(src, dest string) {
+func (d *DAG[T, D]) Connect(src, dest string) {
 	_ = d.graph.AddEdge(src, dest)
 }
 
-func (d *DAG[T]) GetEdges() ([]graph.Edge[string], error) {
+func (d *DAG[T, D]) GetEdges() ([]graph.Edge[string], error) {
 	return d.graph.Edges()
 }
 
-func (d *DAG[T]) Run() (map[string]T, error) {
+func (d *DAG[T, D]) Run() (map[string]T, error) {
 	results := make(map[string]T)
 
 	order, err := graph.TopologicalSort(d.graph)
@@ -83,7 +83,7 @@ func (d *DAG[T]) Run() (map[string]T, error) {
 	return results, nil
 }
 
-func (d *DAG[T]) Visualize() {
+func (d *DAG[T, D]) Visualize() {
 	edges, _ := d.graph.Edges()
 
 	adj := make(map[string][]string)

@@ -9,11 +9,11 @@ import (
 )
 
 func TestDAGVertexAcyclic(t *testing.T) {
-	d, err := dag.NewDAG[int]("root")
+	d, err := dag.NewDAG[int, int]("root")
 	assert.Nil(t, err)
 
-	v1 := &dag.Vertex[int]{Name: "a"}
-	v2 := &dag.Vertex[int]{Name: "b"}
+	v1 := &dag.Vertex[int, int]{Name: "a"}
+	v2 := &dag.Vertex[int, int]{Name: "b"}
 
 	err1 := d.AddVertex(v1)
 	err2 := d.AddVertex(v2)
@@ -25,11 +25,11 @@ func TestDAGVertexAcyclic(t *testing.T) {
 }
 
 func TestDAGVertexAndEdge(t *testing.T) {
-	d, err := dag.NewDAG[int]("root")
+	d, err := dag.NewDAG[int, int]("root")
 	assert.Nil(t, err)
 
-	v1 := &dag.Vertex[int]{Name: "a"}
-	v2 := &dag.Vertex[int]{Name: "b"}
+	v1 := &dag.Vertex[int, int]{Name: "a"}
+	v2 := &dag.Vertex[int, int]{Name: "b"}
 
 	_ = d.AddVertex(v1)
 	_ = d.AddVertex(v2)
@@ -45,13 +45,13 @@ func TestDAGVertexAndEdge(t *testing.T) {
 }
 
 func TestDAGTopologicalOrder(t *testing.T) {
-	d, err := dag.NewDAG[string]("root")
+	d, err := dag.NewDAG[string, int]("root")
 	assert.Nil(t, err)
 
-	a := &dag.Vertex[string]{Name: "a", Run: func(inputs map[string]string) (string, error) { return "a", nil }}
-	b := &dag.Vertex[string]{Name: "b", Run: func(inputs map[string]string) (string, error) { return "b", nil }}
-	c := &dag.Vertex[string]{Name: "c", Run: func(inputs map[string]string) (string, error) { return "c", nil }}
-	d1 := &dag.Vertex[string]{Name: "d", Run: func(inputs map[string]string) (string, error) { return "d", nil }}
+	a := &dag.Vertex[string, int]{Name: "a", Run: func(inputs map[string]string) (string, error) { return "a", nil }}
+	b := &dag.Vertex[string, int]{Name: "b", Run: func(inputs map[string]string) (string, error) { return "b", nil }}
+	c := &dag.Vertex[string, int]{Name: "c", Run: func(inputs map[string]string) (string, error) { return "c", nil }}
+	d1 := &dag.Vertex[string, int]{Name: "d", Run: func(inputs map[string]string) (string, error) { return "d", nil }}
 
 	_ = d.AddVertex(a)
 	_ = d.AddVertex(b)
@@ -73,32 +73,32 @@ func TestDAGTopologicalOrder(t *testing.T) {
 }
 
 func TestDAGResultPropagation(t *testing.T) {
-	d, err := dag.NewDAG[int]("root")
+	d, err := dag.NewDAG[int, int]("root")
 	assert.Nil(t, err)
 
-	a := &dag.Vertex[int]{
+	a := &dag.Vertex[int, int]{
 		Name: "a",
 		Run:  func(inputs map[string]int) (int, error) { return 1, nil },
 	}
-	b := &dag.Vertex[int]{
+	b := &dag.Vertex[int, int]{
 		Name: "b",
 		Run: func(inputs map[string]int) (int, error) {
 			return inputs["a"] + 1, nil
 		},
 	}
-	c := &dag.Vertex[int]{
+	c := &dag.Vertex[int, int]{
 		Name: "c",
 		Run: func(inputs map[string]int) (int, error) {
 			return inputs["a"] + 2, nil
 		},
 	}
-	d1 := &dag.Vertex[int]{
+	d1 := &dag.Vertex[int, int]{
 		Name: "d",
 		Run: func(inputs map[string]int) (int, error) {
 			return inputs["a"] + inputs["b"] + inputs["c"], nil
 		},
 	}
-	e := &dag.Vertex[int]{
+	e := &dag.Vertex[int, int]{
 		Name: "e",
 		Run: func(inputs map[string]int) (int, error) {
 			return inputs["b"] + inputs["c"], nil
@@ -130,12 +130,12 @@ func TestDAGResultPropagation(t *testing.T) {
 }
 
 func TestDAGVisualizeComplex(t *testing.T) {
-	d, err := dag.NewDAG[int]("root")
+	d, err := dag.NewDAG[int, int]("root")
 	assert.Nil(t, err)
 
-	v1 := &dag.Vertex[int]{Name: "a"}
-	v2 := &dag.Vertex[int]{Name: "b"}
-	v3 := &dag.Vertex[int]{Name: "c"}
+	v1 := &dag.Vertex[int, int]{Name: "a"}
+	v2 := &dag.Vertex[int, int]{Name: "b"}
+	v3 := &dag.Vertex[int, int]{Name: "c"}
 
 	_ = d.AddVertex(v1)
 	_ = d.AddVertex(v2)
@@ -149,11 +149,11 @@ func TestDAGVisualizeComplex(t *testing.T) {
 }
 
 func TestDAGVisualizeSimple(t *testing.T) {
-	d, err := dag.NewDAG[int]("root")
+	d, err := dag.NewDAG[int, int]("root")
 	assert.Nil(t, err)
 
-	v1 := &dag.Vertex[int]{Name: "a"}
-	v2 := &dag.Vertex[int]{Name: "b"}
+	v1 := &dag.Vertex[int, int]{Name: "a"}
+	v2 := &dag.Vertex[int, int]{Name: "b"}
 
 	d.Connect("root", v1.Name)
 	_ = d.AddVertex(v1)

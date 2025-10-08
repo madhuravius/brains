@@ -2,13 +2,17 @@ package dag
 
 import "github.com/dominikbraun/graph"
 
-type Vertex[T any] struct {
+type Vertex[T any, D any] struct {
 	Name string
 	Run  func(inputs map[string]T) (T, error)
+
+	dag *DAG[T, D]
 }
 
-type DAG[T any] struct {
-	graph      graph.Graph[string, *Vertex[T]]
-	rootVertex *Vertex[T]
-	vertices   map[string]*Vertex[T]
+type DAG[T any, D any] struct {
+	graph      graph.Graph[string, *Vertex[T, D]]
+	rootVertex *Vertex[T, D]
+	vertices   map[string]*Vertex[T, D]
+
+	data D
 }

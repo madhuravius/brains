@@ -7,14 +7,14 @@ import (
 )
 
 func main() {
-	d, err := dag.NewDAG[int]("_dag")
+	d, err := dag.NewDAG[int, int]("_dag")
 	if err != nil {
 		pterm.Fatal.Printfln("dag.NewDAG: %v", err)
 	}
 
-	v1 := &dag.Vertex[int]{Name: "a"}
-	v2 := &dag.Vertex[int]{Name: "b"}
-	v3 := &dag.Vertex[int]{Name: "c"}
+	v1 := &dag.Vertex[int, int]{Name: "a"}
+	v2 := &dag.Vertex[int, int]{Name: "b"}
+	v3 := &dag.Vertex[int, int]{Name: "c"}
 
 	_ = d.AddVertex(v1)
 	_ = d.AddVertex(v2)
