@@ -7,7 +7,7 @@ import (
 )
 
 const GeneralResearchActivities = `
-You are a research augmentation assistant.
+You are a code assistant.
 
 Your sole purpose is to support the parent prompt by gathering *only the minimal additional information necessary* to complete its specific task accurately.
 
@@ -18,13 +18,11 @@ You must:
 
 Return **only JSON**, with the following exact schema:
 {
-  "markdown_summary": "string",
   "research_actions": {
     "urls_recommended": ["url"]
   }
 }
 
-- "markdown_summary": a concise markdown summary of what actions are suggested
 - "research_actions": a possible collection of activities (ex: urls_recommended) to act on
 
 Do NOT include extra text or commentary. Only return JSON.
@@ -41,10 +39,6 @@ var researcherToolConfig = &types.ToolConfiguration{
 					Value: document.NewLazyDocument(map[string]any{
 						"type": "object",
 						"properties": map[string]any{
-							"markdown_summary": map[string]any{
-								"type":        "string",
-								"description": "Concise markdown summary of the relevant information found.",
-							},
 							"research_actions": map[string]any{
 								"type": "object",
 								"properties": map[string]any{
@@ -57,7 +51,7 @@ var researcherToolConfig = &types.ToolConfiguration{
 								"required": []string{"urls_recommended"},
 							},
 						},
-						"required": []string{"markdown_summary", "research_actions"},
+						"required": []string{"research_actions"},
 					}),
 				},
 			},

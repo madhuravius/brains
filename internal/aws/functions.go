@@ -95,27 +95,31 @@ func (a *AWSConfig) CallAWSBedrockConverse(
 	}
 	spinner.Success()
 
-	responseText, ok := resp.Output.(*bedrockruntimeTypes.ConverseOutputMemberMessage)
+	converseOutput, ok := resp.Output.(*bedrockruntimeTypes.ConverseOutputMemberMessage)
 	if !ok {
-		return nil, fmt.Errorf("unexpected response type")
+		return nil, fmt.Errorf("unexpected response type from Converse API")
 	}
-	if len(responseText.Value.Content) == 0 {
-		return nil, fmt.Errorf("empty response content")
-	}
-	var text *bedrockruntimeTypes.ContentBlockMemberText
-	for _, responseBlock := range responseText.Value.Content {
-		returnedText, okText := responseBlock.(*bedrockruntimeTypes.ContentBlockMemberText)
-		if !okText {
-			continue
-		} else {
-			text = returnedText
-			break
+
+	// attempt json
+	for _, block := range converseOutput.Value.Content {
+		if toolResultBlock, ok := block.(*bedrockruntimeTypes.ContentBlockMemberToolUse); ok {
+			data, err := toolResultBlock.Value.Input.MarshalSmithyDocument()
+			if err != nil {
+				return nil, err
+			}
+			return data, nil
 		}
 	}
-	if text == nil {
-		return nil, fmt.Errorf("empty response content (no text)")
+
+	// fall back to text, this may fail
+	for _, block := range converseOutput.Value.Content {
+		if textBlock, ok := block.(*bedrockruntimeTypes.ContentBlockMemberText); ok {
+			pterm.Warning.Println("Model returned a text response instead of using the tool. Parsing may be brittle.")
+			return []byte(textBlock.Value), nil
+		}
 	}
-	return []byte(text.Value), nil
+
+	return nil, fmt.Errorf("no tool use or text block found in the response")
 }
 
 func (c *AWSConfig) pricingFor(modelID string) (modelPricing, bool) {

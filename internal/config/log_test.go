@@ -67,8 +67,8 @@ func TestPrintLogsTagConversion(t *testing.T) {
 	b := &config.BrainsConfig{}
 	_ = b.InitLogger(true)
 	b.LogMessage("[REQUEST] ask")
-	b.LogMessage("[RESPONSE] answer")
-	b.LogMessage("[RESPONSE FOR CODE] diff")
+	b.LogMessage("[RESPONSE] \n answer")
+	b.LogMessage("[RESPONSE FOR CODE] \n diff")
 
 	r, w, _ := os.Pipe()
 	oldStdout := os.Stdout

@@ -52,48 +52,44 @@ func TestExtractCodeModelResponse_CodeModelResponseWithParameters(t *testing.T) 
 }
 
 func TestExtractResearchModelResponse_ArrayOfResearchModelResponse(t *testing.T) {
-	resp := []core.ResearchModelResponse{{MarkdownSummary: "array simple", ResearchActions: core.ResearchActions{UrlsRecommended: []string{"url1"}}}}
+	resp := []core.ResearchModelResponse{{ResearchActions: core.ResearchActions{UrlsRecommended: []string{"url1"}}}}
 	data, _ := json.Marshal(resp)
 
 	rmr, err := core.ExtractResponse(data, core.UnwrapFunc[core.ResearchModelResponse, core.ResearchModelResponseWithParameters]())
 	assert.NoError(t, err)
-	assert.Equal(t, "array simple", rmr.MarkdownSummary)
 	assert.Equal(t, []string{"url1"}, rmr.ResearchActions.UrlsRecommended)
 }
 
 func TestExtractResearchModelResponse_ArrayOfResearchModelResponseWithParameters(t *testing.T) {
 	wrapper := []core.ResearchModelResponseWithParameters{{
 		Name:       "test",
-		Parameters: core.ResearchModelResponse{MarkdownSummary: "array with params", ResearchActions: core.ResearchActions{UrlsRecommended: []string{"url2"}}},
+		Parameters: core.ResearchModelResponse{ResearchActions: core.ResearchActions{UrlsRecommended: []string{"url2"}}},
 	}}
 	data, _ := json.Marshal(wrapper)
 
 	rmr, err := core.ExtractResponse(data, core.UnwrapFunc[core.ResearchModelResponse, core.ResearchModelResponseWithParameters]())
 	assert.NoError(t, err)
-	assert.Equal(t, "array with params", rmr.MarkdownSummary)
 	assert.Equal(t, []string{"url2"}, rmr.ResearchActions.UrlsRecommended)
 }
 
 func TestExtractResearchModelResponse_ResearchModelResponse(t *testing.T) {
-	resp := core.ResearchModelResponse{MarkdownSummary: "object simple", ResearchActions: core.ResearchActions{UrlsRecommended: []string{"url3"}}}
+	resp := core.ResearchModelResponse{ResearchActions: core.ResearchActions{UrlsRecommended: []string{"url3"}}}
 	data, _ := json.Marshal(resp)
 
 	rmr, err := core.ExtractResponse(data, core.UnwrapFunc[core.ResearchModelResponse, core.ResearchModelResponseWithParameters]())
 	assert.NoError(t, err)
-	assert.Equal(t, "object simple", rmr.MarkdownSummary)
 	assert.Equal(t, []string{"url3"}, rmr.ResearchActions.UrlsRecommended)
 }
 
 func TestExtractResearchModelResponse_ResearchModelResponseWithParameters(t *testing.T) {
 	wrapper := core.ResearchModelResponseWithParameters{
 		Name:       "test",
-		Parameters: core.ResearchModelResponse{MarkdownSummary: "object with params", ResearchActions: core.ResearchActions{UrlsRecommended: []string{"url4"}}},
+		Parameters: core.ResearchModelResponse{ResearchActions: core.ResearchActions{UrlsRecommended: []string{"url4"}}},
 	}
 	data, _ := json.Marshal(wrapper)
 
 	rmr, err := core.ExtractResponse(data, core.UnwrapFunc[core.ResearchModelResponse, core.ResearchModelResponseWithParameters]())
 	assert.NoError(t, err)
-	assert.Equal(t, "object with params", rmr.MarkdownSummary)
 	assert.Equal(t, []string{"url4"}, rmr.ResearchActions.UrlsRecommended)
 }
 

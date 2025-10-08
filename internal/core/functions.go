@@ -32,7 +32,7 @@ func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool
 	if personaInstructions != "" {
 		prompt = fmt.Sprintf("%s%s", personaInstructions, prompt)
 	}
-	c.logger.LogMessage("[REQUEST] " + prompt)
+	c.logger.LogMessage("[REQUEST] \n " + prompt)
 
 	addedContext, err := c.enrichWithGlob(glob)
 	if err != nil {
@@ -66,7 +66,7 @@ func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool
 		return false
 	}
 	for _, choice := range data.Choices {
-		c.logger.LogMessage("[RESPONSE] " + choice.Message.Content)
+		c.logger.LogMessage("[RESPONSE] \n " + choice.Message.Content)
 		c.awsConfig.PrintBedrockMessage(choice.Message.Content)
 	}
 	c.awsConfig.PrintCost(data.Usage, modelID)
@@ -107,14 +107,14 @@ func (c *CoreConfig) Research(prompt, modelID, glob string) *ResearchActions {
 		pterm.Error.Printf("converse error: %v\n", err)
 		return nil
 	}
-	c.logger.LogMessage("[RESPONSE FOR RESEARCH] " + string(respBody) + "\n\n")
+	c.logger.LogMessage("[RESPONSE FOR RESEARCH] \n " + string(respBody) + "\n\n")
 
 	data, err := ExtractResponse(
 		respBody,
 		UnwrapFunc[ResearchModelResponse, ResearchModelResponseWithParameters](),
 	)
 	if err != nil {
-		pterm.Error.Printf("unable to extractCodeModelResponse: %v\n", err)
+		pterm.Error.Printf("unable to ExtractResponse (research): %v\n", err)
 		return nil
 	}
 
@@ -153,18 +153,18 @@ func (c *CoreConfig) Code(prompt, personaInstructions, modelID, glob string) boo
 		pterm.Error.Printf("converse error: %v\n", err)
 		return false
 	}
-	c.logger.LogMessage("[RESPONSE FOR CODE] " + string(respBody) + "\n\n")
+	c.logger.LogMessage("[RESPONSE FOR CODE] \n " + string(respBody) + "\n\n")
 
 	data, err := ExtractResponse(
 		respBody,
 		UnwrapFunc[CodeModelResponse, CodeModelResponseWithParameters](),
 	)
 	if err != nil {
-		pterm.Error.Printf("unable to extractCodeModelResponse: %v\n", err)
+		pterm.Error.Printf("unable to ExtractResponse (code): %v\n", err)
 		return false
 	}
 
-	c.logger.LogMessage("[RESPONSE] " + data.MarkdownSummary + "\n\n")
+	c.logger.LogMessage("[RESPONSE] \n " + data.MarkdownSummary + "\n\n")
 	c.awsConfig.PrintBedrockMessage(data.MarkdownSummary)
 
 	pterm.Info.Printfln("reviewing each code update, for review one at a time. %d pending updates", len(data.CodeUpdates))
@@ -223,7 +223,7 @@ func (c *CoreConfig) ValidateBedrockConfiguration(modelID string) bool {
 			},
 		},
 	}
-	c.logger.LogMessage("[REQUEST] health‑check prompt")
+	c.logger.LogMessage("[REQUEST] \n health‑check prompt")
 	respBody, err := c.awsConfig.CallAWSBedrock(ctx, modelID, simpleReq)
 	if err != nil {
 		pterm.Error.Printf("InvokeModel error: %v\n", err)
@@ -236,7 +236,7 @@ func (c *CoreConfig) ValidateBedrockConfiguration(modelID string) bool {
 	}
 	for _, choice := range data.Choices {
 		c.awsConfig.PrintBedrockMessage(choice.Message.Content)
-		c.logger.LogMessage("[RESPONSE] " + choice.Message.Content)
+		c.logger.LogMessage("[RESPONSE] \n " + choice.Message.Content)
 	}
 	c.awsConfig.PrintCost(data.Usage, modelID)
 	c.awsConfig.PrintContext(data.Usage)

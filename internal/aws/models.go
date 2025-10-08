@@ -106,10 +106,3 @@ type AddCodeFile struct {
 type RemoveCodeFile struct {
 	Path string `json:"path"`
 }
-
-type CodeModelResponse struct {
-	MarkdownSummary string           `json:"markdown_summary"`
-	CodeUpdates     []CodeUpdate     `json:"code_updates"`
-	AddCodeFiles    []AddCodeFile    `json:"add_code_files,omitempty"`
-	RemoveCodeFiles []RemoveCodeFile `json:"remove_code_files,omitempty"`
-}

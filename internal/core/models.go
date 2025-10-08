@@ -52,11 +52,10 @@ type CodeModelResponseWithParameters struct {
 }
 
 type ResearchActions struct {
-	UrlsRecommended []string
+	UrlsRecommended []string `json:"urls_recommended"`
 }
 
 type ResearchModelResponse struct {
-	MarkdownSummary string          `json:"markdown_summary"`
 	ResearchActions ResearchActions `json:"research_actions"`
 }
 
