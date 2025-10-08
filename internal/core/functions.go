@@ -8,7 +8,29 @@ import (
 	"github.com/pterm/pterm"
 
 	"brains/internal/aws"
+	"brains/internal/tools/browser"
 )
+
+func generateResearchRun[T Researchable](
+	coreConfig *CoreConfig,
+	ctx context.Context,
+	req *LLMRequest,
+	t T,
+) askDataDAGFunction {
+	return func(inputs map[string]string) (string, error) {
+		researchActions := coreConfig.Research(req.Prompt, req.ModelID, req.Glob)
+
+		for _, url := range researchActions.UrlsRecommended {
+			data, err := browser.FetchWebContext(ctx, url)
+			if err != nil {
+				pterm.Error.Printf("Failed to load url: %v\n", err)
+				return "", err
+			}
+			t.SetResearchData(url, data)
+		}
+		return "", nil
+	}
+}
 
 func (c *CoreConfig) enrichWithGlob(glob string) (string, error) {
 	addedContext := ""

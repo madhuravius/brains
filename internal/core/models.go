@@ -22,11 +22,19 @@ type LLMRequest struct {
 	PersonaInstructions string
 	Prompt              string
 }
+type Researchable interface {
+	SetResearchData(url, data string)
+}
 type ResearchData map[string]string
 type AskData struct {
-	Research ResearchData
+	ResearchData
 }
 type askDataDAGFunction func(inputs map[string]string) (string, error)
+
+type CodeData struct {
+	ResearchData
+}
+type codeDataDAGFunction func(inputs map[string]string) (string, error)
 
 type Hydratable interface {
 	IsHydrated() bool
