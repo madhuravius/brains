@@ -16,6 +16,18 @@ type CoreConfig struct {
 	logger      brainsConfig.SimpleLogger
 }
 
+type LLMRequest struct {
+	Glob                string
+	ModelID             string
+	PersonaInstructions string
+	Prompt              string
+}
+type ResearchData map[string]string
+type AskData struct {
+	Research ResearchData
+}
+type askDataDAGFunction func(inputs map[string]string) (string, error)
+
 type Hydratable interface {
 	IsHydrated() bool
 }

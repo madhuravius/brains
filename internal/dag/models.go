@@ -12,6 +12,4 @@ type DAG[T any, D any] struct {
 	graph      graph.Graph[string, *Vertex[T, D]]
 	rootVertex *Vertex[T, D]
 	vertices   map[string]*Vertex[T, D]
-
-	data D
 }

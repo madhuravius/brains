@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	"github.com/pterm/pterm"
@@ -94,11 +95,12 @@ func main() {
 					}
 					cliConfig.validateAWSCredentials()
 					personaInstructions := cliConfig.brainsConfig.GetPersonaInstructions(cliConfig.persona)
-					if !cliConfig.coreConfig.Ask(prompt, personaInstructions, cliConfig.brainsConfig.Model, cliConfig.glob) {
-						pterm.Error.Println("failed to get response from Bedrock")
-						os.Exit(1)
-					}
-
+					cliConfig.coreConfig.AskFlow(context.Background(), &core.LLMRequest{
+						Prompt:              prompt,
+						PersonaInstructions: personaInstructions,
+						ModelID:             cliConfig.brainsConfig.Model,
+						Glob:                cliConfig.glob,
+					})
 					pterm.Success.Println("question answered")
 					return nil
 				},
