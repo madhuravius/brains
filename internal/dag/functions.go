@@ -94,7 +94,7 @@ func (d *DAG[T, D]) Visualize() {
 	// Get topological order
 	order, err := graph.TopologicalSort(d.graph)
 	if err != nil {
-		fmt.Println("Error sorting DAG:", err)
+		fmt.Println("error sorting DAG:", err)
 		return
 	}
 	// Assign order to vertices

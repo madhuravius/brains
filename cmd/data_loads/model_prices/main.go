@@ -93,7 +93,7 @@ func getBedrockPricing(ctx context.Context) (map[string]PricingDetails, error) {
 		for _, priceJSON := range page.PriceList {
 			var priceData PriceData
 			if err := json.Unmarshal([]byte(priceJSON), &priceData); err != nil {
-				log.Printf("Warning: failed to unmarshal price data: %v", err)
+				log.Printf("warning: failed to unmarshal price data: %v", err)
 				continue
 			}
 
@@ -124,12 +124,12 @@ func getBedrockPricing(ctx context.Context) (map[string]PricingDetails, error) {
 }
 
 func main() {
-	fmt.Printf("Fetching data for region: %s\n\n", REGION)
+	fmt.Printf("fetching data for region: %s\n\n", REGION)
 	ctx := context.TODO()
 
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(REGION))
 	if err != nil {
-		log.Fatalf("Unable to load SDK config, %v", err)
+		log.Fatalf("unable to load SDK config, %v", err)
 	}
 
 	var wg sync.WaitGroup
@@ -143,7 +143,7 @@ func main() {
 		defer wg.Done()
 		availableModels, modelsErr = getAvailableModels(ctx, cfg)
 		if modelsErr == nil {
-			log.Println("✅ Finished fetching available models.")
+			log.Println("✅ finished fetching available models.")
 		}
 	}()
 
@@ -151,17 +151,17 @@ func main() {
 		defer wg.Done()
 		modelPricing, pricingErr = getBedrockPricing(ctx)
 		if pricingErr == nil {
-			log.Println("✅ Finished fetching pricing information.")
+			log.Println("✅ finished fetching pricing information.")
 		}
 	}()
 
 	wg.Wait()
 
 	if modelsErr != nil {
-		log.Fatalf("Error fetching available models: %v", modelsErr)
+		log.Fatalf("error fetching available models: %v", modelsErr)
 	}
 	if pricingErr != nil {
-		log.Fatalf("Error fetching pricing information: %v", pricingErr)
+		log.Fatalf("error fetching pricing information: %v", pricingErr)
 	}
 
 	var combinedData []brainsAws.AggregatedModelPricing
@@ -183,10 +183,10 @@ func main() {
 	}
 
 	if len(combinedData) == 0 {
-		fmt.Println("\n⚠️ No models with corresponding pricing found.")
-		fmt.Printf("This could be because:\n")
-		fmt.Printf("  1. Model access is not enabled for your account in the '%s' region.\n", REGION)
-		fmt.Printf("  2. The pricing API did not return data for this region.\n")
+		fmt.Println("\n⚠️ no models with corresponding pricing found.")
+		fmt.Printf("this could be because:\n")
+		fmt.Printf("  1. model access is not enabled for your account in the '%s' region.\n", REGION)
+		fmt.Printf("  2. the pricing API did not return data for this region.\n")
 		return
 	}
 
@@ -194,28 +194,28 @@ func main() {
 		return combinedData[i].ModelName < combinedData[j].ModelName
 	})
 
-	fmt.Println("\n--- Combined Model and Pricing Data ---")
+	fmt.Println("\n--- combined model and pricing data ---")
 	for _, item := range combinedData {
-		fmt.Printf("Model Name: %s\n", item.ModelName)
-		fmt.Printf("  - Model ID: %s\n", item.ModelID)
-		fmt.Printf("  - Provider: %s\n", item.ProviderName)
-		fmt.Printf("  - Input Cost / 1k tokens: $%.6f\n", item.InputCostPer1kTokens)
-		fmt.Printf("  - Output Cost / 1k tokens: $%.6f\n", item.OutputCostPer1kTokens)
+		fmt.Printf("model name: %s\n", item.ModelName)
+		fmt.Printf("  - model id: %s\n", item.ModelID)
+		fmt.Printf("  - provider: %s\n", item.ProviderName)
+		fmt.Printf("  - input cost / 1k tokens: $%.6f\n", item.InputCostPer1kTokens)
+		fmt.Printf("  - output cost / 1k tokens: $%.6f\n", item.OutputCostPer1kTokens)
 		fmt.Println("----------------------------------------")
 	}
 
 	jsonBytes, err := json.MarshalIndent(combinedData, "", "  ")
 	if err != nil {
-		pterm.Error.Printf("Failed to marshal pricing data to JSON: %v\n", err)
+		pterm.Error.Printf("failed to marshal pricing data to json: %v\n", err)
 	} else {
 		if mkErr := os.MkdirAll("data", 0o750); mkErr != nil {
-			pterm.Error.Printf("Failed to create data directory: %v\n", mkErr)
+			pterm.Error.Printf("failed to create data directory: %v\n", mkErr)
 		} else {
 			if writeErr := os.WriteFile("internal/aws/data/models_pricing.json", jsonBytes, 0o644); writeErr !=
 				nil {
-				pterm.Error.Printf("Failed to write models_pricing.json: %v\n", writeErr)
+				pterm.Error.Printf("failed to write models_pricing.json: %v\n", writeErr)
 			} else {
-				pterm.Success.Println("Pricing data written to data/models_pricing.json")
+				pterm.Success.Println("pricing data written to data/models_pricing.json")
 			}
 		}
 	}

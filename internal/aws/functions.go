@@ -38,14 +38,14 @@ func (a *AWSConfig) CallAWSBedrock(ctx context.Context, modelID string, req Bedr
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal Bedrock request: %w", err)
 	}
-	pterm.Info.Printfln("Size of outbound request: %d", len(body))
+	pterm.Info.Printfln("size of outbound request: %d", len(body))
 	input := &bedrockruntime.InvokeModelInput{
 		Body:        body,
 		ModelId:     aws.String(modelID),
 		ContentType: aws.String("application/json"),
 		Accept:      aws.String("application/json"),
 	}
-	spinner, _ := pterm.DefaultSpinner.Start("Loading response from AWS Bedrock")
+	spinner, _ := pterm.DefaultSpinner.Start("loading response from AWS Bedrock")
 	resp, err := client.InvokeModel(ctx, input)
 	if err != nil {
 		spinner.Fail()
@@ -87,7 +87,7 @@ func (a *AWSConfig) CallAWSBedrockConverse(
 		input.ToolConfig = toolConfig
 	}
 
-	spinner, _ := pterm.DefaultSpinner.Start("Loading response from AWS Bedrock (Converse)")
+	spinner, _ := pterm.DefaultSpinner.Start("loading response from AWS Bedrock (Converse)")
 	resp, err := client.ConverseModel(ctx, input)
 	if err != nil {
 		spinner.Fail()
@@ -114,7 +114,7 @@ func (a *AWSConfig) CallAWSBedrockConverse(
 	// fall back to text, this may fail
 	for _, block := range converseOutput.Value.Content {
 		if textBlock, ok := block.(*bedrockruntimeTypes.ContentBlockMemberText); ok {
-			pterm.Warning.Println("Model returned a text response instead of using the tool. Parsing may be brittle.")
+			pterm.Warning.Println("model returned a text response instead of using the tool. Parsing may be brittle.")
 			return []byte(textBlock.Value), nil
 		}
 	}
@@ -149,7 +149,7 @@ func (a *AWSConfig) PrintCost(usage map[string]any, modelID string) {
 	}
 	cost := (float64(promptTokens)/1000.0)*p.InputCostPer1kTokens + (float64(completionTokens)/1000.0)*p.
 		OutputCostPer1kTokens
-	pterm.Info.Printf("Estimated cost for this request: $%.6f (prompt %d, completion %d)\n", cost, promptTokens,
+	pterm.Info.Printf("estimated cost for this request: $%.6f (prompt %d, completion %d)\n", cost, promptTokens,
 		completionTokens)
 }
 
@@ -168,7 +168,7 @@ func (a *AWSConfig) PrintContext(usage map[string]any) {
 		}
 	}
 	total := promptTokens + completionTokens
-	pterm.Info.Printf("Current context used: %d tokens (limit %d)\n", total, tokenLimit)
+	pterm.Info.Printf("current context used: %d tokens (limit %d)\n", total, tokenLimit)
 }
 
 func (a *AWSConfig) PrintBedrockMessage(content string) {

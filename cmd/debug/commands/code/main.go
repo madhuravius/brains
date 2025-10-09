@@ -21,7 +21,7 @@ func main() {
 	ctx := context.Background()
 	brainsConfig, err := config.LoadConfig()
 	if err != nil {
-		pterm.Error.Printf("Failed to load configuration: %v\n", err)
+		pterm.Error.Printf("failed to load configuration: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -44,5 +44,8 @@ func main() {
 		Prompt:              prompt,
 	}
 
-	coreConfig.CodeFlow(ctx, req)
+	if err := coreConfig.CodeFlow(ctx, req); err != nil {
+		pterm.Error.Printf("error on coreConfig.CodeFlow: %v\n", err)
+		os.Exit(1)
+	}
 }
