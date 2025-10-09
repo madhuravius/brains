@@ -47,21 +47,21 @@ func (c *CLIConfig) validateAWSCredentials() {
 }
 
 func main() {
-	cfg, err := config.LoadConfig()
+	brainsConfig, err := config.LoadConfig()
 	if err != nil {
 		pterm.Error.Printf("Failed to load configuration: %v\n", err)
 		os.Exit(1)
 	}
 
-	awsConfig := aws.NewAWSConfig(cfg.AWSRegion)
-	awsConfig.SetLogger(cfg)
+	awsConfig := aws.NewAWSConfig(brainsConfig.AWSRegion)
+	awsConfig.SetLogger(brainsConfig)
 
 	coreConfig := core.NewCoreConfig(awsConfig)
-	coreConfig.SetLogger(cfg)
+	coreConfig.SetLogger(brainsConfig)
 
 	cliConfig := &CLIConfig{
 		awsConfig:    awsConfig,
-		brainsConfig: cfg,
+		brainsConfig: brainsConfig,
 		coreConfig:   coreConfig,
 	}
 
@@ -86,7 +86,7 @@ func main() {
 			{
 				Name:  "ask",
 				Usage: "send a prompt to the Bedrock model and display the response",
-				Flags: generateCommonFlags(cliConfig, cfg),
+				Flags: generateCommonFlags(cliConfig, brainsConfig),
 				Action: func(c *cli.Context) error {
 					prompt := c.Args().Get(0)
 					if prompt == "" {
@@ -108,7 +108,7 @@ func main() {
 			{
 				Name:  "code",
 				Usage: "send a prompt to the Bedrock model and execute coding actions",
-				Flags: generateCommonFlags(cliConfig, cfg),
+				Flags: generateCommonFlags(cliConfig, brainsConfig),
 				Action: func(c *cli.Context) error {
 					prompt := c.Args().Get(0)
 					if prompt == "" {
@@ -128,6 +128,17 @@ func main() {
 					}
 
 					pterm.Success.Println("code execution complete")
+					return nil
+				},
+			},
+			{
+				Name:  "pricing",
+				Usage: "print information on bedrock prices and selected model",
+				Action: func(c *cli.Context) error {
+					if err := awsConfig.PrintPricing(brainsConfig.Model); err != nil {
+						pterm.Error.Printfln("pricing failed: %v", err)
+						return err
+					}
 					return nil
 				},
 			},

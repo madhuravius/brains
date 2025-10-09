@@ -122,55 +122,6 @@ func (a *AWSConfig) CallAWSBedrockConverse(
 	return nil, fmt.Errorf("no tool use or text block found in the response")
 }
 
-func (c *AWSConfig) pricingFor(modelID string) (modelPricing, bool) {
-	for _, p := range c.pricing {
-		if p.ModelID == modelID {
-			return p, true
-		}
-	}
-	return modelPricing{}, false
-}
-
-func (a *AWSConfig) PrintCost(usage map[string]any, modelID string) {
-	p := modelPricing{}
-	if val, ok := a.pricingFor(modelID); ok {
-		p = val
-	}
-	promptTokens, completionTokens := 0, 0
-	if v, ok := usage["prompt_tokens"]; ok {
-		if n, ok := v.(float64); ok {
-			promptTokens = int(n)
-		}
-	}
-	if v, ok := usage["completion_tokens"]; ok {
-		if n, ok := v.(float64); ok {
-			completionTokens = int(n)
-		}
-	}
-	cost := (float64(promptTokens)/1000.0)*p.InputCostPer1kTokens + (float64(completionTokens)/1000.0)*p.
-		OutputCostPer1kTokens
-	pterm.Info.Printf("estimated cost for this request: $%.6f (prompt %d, completion %d)\n", cost, promptTokens,
-		completionTokens)
-}
-
-func (a *AWSConfig) PrintContext(usage map[string]any) {
-	// token limit is still a fixed safety bound (128 000)
-	const tokenLimit = 128000
-	promptTokens, completionTokens := 0, 0
-	if v, ok := usage["prompt_tokens"]; ok {
-		if n, ok := v.(float64); ok {
-			promptTokens = int(n)
-		}
-	}
-	if v, ok := usage["completion_tokens"]; ok {
-		if n, ok := v.(float64); ok {
-			completionTokens = int(n)
-		}
-	}
-	total := promptTokens + completionTokens
-	pterm.Info.Printf("current context used: %d tokens (limit %d)\n", total, tokenLimit)
-}
-
 func (a *AWSConfig) PrintBedrockMessage(content string) {
 	r, _ := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
