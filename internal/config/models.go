@@ -9,7 +9,6 @@ type logger struct {
 	enabled bool
 	file    *os.File
 	mu      sync.Mutex
-	mem     []string
 }
 
 type SimpleLogger interface {

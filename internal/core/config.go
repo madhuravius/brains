@@ -5,20 +5,20 @@ import (
 
 	"github.com/pterm/pterm"
 
-	"brains/internal/agents/file_system"
 	"brains/internal/aws"
 	brainsConfig "brains/internal/config"
+	"brains/internal/tools/file_system"
 )
 
 func NewCoreConfig(awsConfig *aws.AWSConfig) *CoreConfig {
-	fsAgentConfig, err := file_system.NewFileSystemConfig()
+	fsToolConfig, err := file_system.NewFileSystemConfig()
 	if err != nil {
-		pterm.Error.Printf("Failed to load fs agent configuration: %v\n", err)
+		pterm.Error.Printf("Failed to load fs tool configuration: %v\n", err)
 		os.Exit(1)
 	}
 	return &CoreConfig{
-		agentsConfig: &agentsConfig{
-			fsAgentConfig: fsAgentConfig,
+		toolsConfig: &toolsConfig{
+			fsToolConfig: fsToolConfig,
 		},
 		awsConfig: awsConfig,
 	}

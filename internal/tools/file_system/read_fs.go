@@ -33,7 +33,7 @@ var defaultIgnoreNames = map[string]struct{}{
 	".venv":             {},
 }
 
-func loadGitignore(path string) ([]string, error) {
+func LoadGitignore(path string) ([]string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -56,7 +56,7 @@ func loadGitignore(path string) ([]string, error) {
 	return patterns, scanner.Err()
 }
 
-func (f *FileSystemConfig) isIgnored(path string) bool {
+func (f *FileSystemConfig) IsIgnored(path string) bool {
 	path = filepath.ToSlash(path)
 
 	if strings.HasPrefix(path, ".git/") || path == ".git" {
@@ -114,7 +114,7 @@ func (f *FileSystemConfig) SetContextFromGlob(pattern string) (string, error) {
 	contents := make(map[string]string)
 
 	for _, fpath := range files {
-		if f.isIgnored(fpath) {
+		if f.IsIgnored(fpath) {
 			continue
 		}
 
@@ -133,7 +133,7 @@ func (f *FileSystemConfig) SetContextFromGlob(pattern string) (string, error) {
 			continue
 		}
 
-		pterm.Info.Printfln("added file to context: %s", fpath)
+		pterm.Debug.Printfln("added file to context: %s", fpath)
 		contents[fpath] = string(data)
 	}
 

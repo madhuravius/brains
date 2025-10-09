@@ -8,9 +8,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.31.12
 	github.com/aws/aws-sdk-go-v2/service/bedrock v1.47.2
 	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.41.0
+	github.com/aws/aws-sdk-go-v2/service/pricing v1.39.6
 	github.com/aws/aws-sdk-go-v2/service/sts v1.38.6
 	github.com/bmatcuk/doublestar/v4 v4.9.1
 	github.com/charmbracelet/glamour v0.10.0
+	github.com/dominikbraun/graph v0.23.0
 	github.com/go-rod/rod v0.116.2
 	github.com/go-shiori/go-readability v0.0.0-20250217085726-9f5bf5ca7612
 	github.com/muesli/termenv v0.16.0

@@ -4,15 +4,30 @@ import (
 	"context"
 	"fmt"
 	neturl "net/url"
+	"os"
 	"regexp"
 	"strings"
 
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-shiori/go-readability"
+	"github.com/pterm/pterm"
 )
 
 func FetchWebContext(ctx context.Context, url string) (string, error) {
-	browser := rod.New().MustConnect()
+	l := launcher.New().Headless(true)
+
+	if os.Getenv("DISABLE_ROD_SANDBOX") == "true" {
+		l.Set("no-sandbox").
+			Set("disable-setuid-sandbox").
+			Set("disable-dev-shm-usage").
+			Set("disable-gpu")
+	}
+
+	pterm.Info.Printfln("opening browser to view url: %s", url)
+
+	rodUrl := l.MustLaunch()
+	browser := rod.New().ControlURL(rodUrl).MustConnect()
 	defer browser.MustClose()
 
 	page := browser.MustPage(url)
@@ -44,6 +59,8 @@ func FetchWebContext(ctx context.Context, url string) (string, error) {
 
 	reMultipleSpaces := regexp.MustCompile(`\s+`)
 	cleanedText = reMultipleSpaces.ReplaceAllString(cleanedText, " ")
+
+	pterm.Info.Printfln("completed loading url with success: %s", url)
 
 	return cleanedText, nil
 }

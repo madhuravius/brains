@@ -5,7 +5,7 @@ type FileSystemConfig struct {
 }
 
 func NewFileSystemConfig() (*FileSystemConfig, error) {
-	ignorePatterns, err := loadGitignore(".gitignore")
+	ignorePatterns, err := LoadGitignore(".gitignore")
 	if err != nil {
 		return nil, err
 	}

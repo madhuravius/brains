@@ -8,13 +8,35 @@ import (
 	"github.com/pterm/pterm"
 
 	"brains/internal/aws"
+	"brains/internal/tools/browser"
 )
+
+func generateResearchRun[T Researchable](
+	coreConfig *CoreConfig,
+	ctx context.Context,
+	req *LLMRequest,
+	t T,
+) askDataDAGFunction {
+	return func(inputs map[string]string) (string, error) {
+		researchActions := coreConfig.Research(req.Prompt, req.ModelID, req.Glob)
+
+		for _, url := range researchActions.UrlsRecommended {
+			data, err := browser.FetchWebContext(ctx, url)
+			if err != nil {
+				pterm.Error.Printf("Failed to load url: %v\n", err)
+				return "", err
+			}
+			t.SetResearchData(url, data)
+		}
+		return "", nil
+	}
+}
 
 func (c *CoreConfig) enrichWithGlob(glob string) (string, error) {
 	addedContext := ""
 	if glob != "" {
 		var err error
-		addedContext, err = c.agentsConfig.fsAgentConfig.SetContextFromGlob(glob)
+		addedContext, err = c.toolsConfig.fsToolConfig.SetContextFromGlob(glob)
 		if err != nil {
 			pterm.Error.Printfln("failed to read glob pattern for context: %v", err)
 			return "", err
@@ -32,7 +54,7 @@ func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool
 	if personaInstructions != "" {
 		prompt = fmt.Sprintf("%s%s", personaInstructions, prompt)
 	}
-	c.logger.LogMessage("[REQUEST] " + prompt)
+	c.logger.LogMessage("[REQUEST] \n " + prompt)
 
 	addedContext, err := c.enrichWithGlob(glob)
 	if err != nil {
@@ -57,43 +79,35 @@ func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool
 
 	respBody, err := c.awsConfig.CallAWSBedrock(ctx, modelID, req)
 	if err != nil {
-		pterm.Error.Printf("InvokeModel error: %v\n", err)
+		pterm.Error.Printf("invokeModel error: %v\n", err)
 		return false
 	}
 	var data aws.ChatResponse
 	if err := json.Unmarshal(respBody, &data); err != nil {
-		pterm.Error.Printf("Json Unmarshal error (when parsing Bedrock Body): %v\n", err)
+		pterm.Error.Printf("json Unmarshal error (when parsing Bedrock Body): %v\n", err)
 		return false
 	}
 	for _, choice := range data.Choices {
-		c.logger.LogMessage("[RESPONSE] " + choice.Message.Content)
+		c.logger.LogMessage("[RESPONSE] \n " + choice.Message.Content)
 		c.awsConfig.PrintBedrockMessage(choice.Message.Content)
 	}
-	c.awsConfig.PrintCost(data.Usage)
+	c.awsConfig.PrintCost(data.Usage, modelID)
 	c.awsConfig.PrintContext(data.Usage)
 	return true
 }
 
-func (c *CoreConfig) Code(prompt, personaInstructions, modelID, glob string) bool {
+func (c *CoreConfig) Research(prompt, modelID, glob string) *ResearchActions {
 	ctx := context.Background()
-	if !c.Ask(prompt, personaInstructions, modelID, glob) {
-		return false
-	}
-	pterm.Info.Printf("will edit files in place for those listed above\n")
-	result, _ := pterm.DefaultInteractiveConfirm.WithDefaultText("Continue with file edits?").Show()
-	if !result {
-		pterm.Warning.Printf("refused to continue, breaking early")
-		return false
-	}
 
 	promptToSendBedrock := ""
 	addedContext, err := c.enrichWithGlob(glob)
+
 	if err != nil {
-		return false
+		return nil
 	}
 	promptToSendBedrock += addedContext
 	if logCtx := c.logger.GetLogContext(); logCtx != "" {
-		promptToSendBedrock += fmt.Sprintf("%s\n\n%s", logCtx, CoderPromptPostProcess)
+		promptToSendBedrock += fmt.Sprintf("%s\n%s\n%s", logCtx, prompt, GeneralResearchActivities)
 	}
 
 	req := aws.BedrockRequest{
@@ -110,56 +124,113 @@ func (c *CoreConfig) Code(prompt, personaInstructions, modelID, glob string) boo
 		},
 	}
 
-	respBody, err := c.awsConfig.CallAWSBedrockConverse(ctx, modelID, req)
+	respBody, err := c.awsConfig.CallAWSBedrockConverse(ctx, modelID, req, researcherToolConfig)
 	if err != nil {
-		pterm.Error.Printf("Converse error: %v\n", err)
-		return false
+		pterm.Error.Printf("converse error: %v\n", err)
+		return nil
 	}
-	c.logger.LogMessage("[RESPONSE FOR CODE] " + string(respBody))
+	c.logger.LogMessage("[RESPONSE FOR RESEARCH] \n " + string(respBody) + "\n\n")
 
-	var data aws.CodeModelResponse
-	if err := json.Unmarshal(respBody, &data); err != nil {
-		pterm.Error.Printf("Json Unmarshal error (when parsing Bedrock Body): %v\n", err)
-		return false
+	data, err := ExtractResponse(
+		respBody,
+		UnwrapFunc[ResearchModelResponse, ResearchModelResponseWithParameters](),
+	)
+	if err != nil {
+		pterm.Error.Printf("unable to ExtractResponse (research): %v\n", err)
+		return nil
 	}
+
+	return &data.ResearchActions
+}
+
+func (c *CoreConfig) ExecuteEditCode(data *CodeModelResponse) bool {
+	pterm.Info.Printfln("reviewing each code update, for review one at a time. %d pending updates", len(data.CodeUpdates))
 
 	for updateIdx, update := range data.CodeUpdates {
-		pterm.Info.Printfln("Updating file: %s (%d/%d)", update.Path, updateIdx+1, len(data.CodeUpdates))
+		pterm.Info.Printfln("updating file: %s (%d/%d)", update.Path, updateIdx+1, len(data.CodeUpdates))
 
-		if _, err := c.agentsConfig.fsAgentConfig.UpdateFile(update.Path, update.OldCode, update.NewCode, true); err != nil {
-			pterm.Error.Printfln("Failed to update %s: %v", update.Path, err)
+		if _, err := c.toolsConfig.fsToolConfig.UpdateFile(update.Path, update.OldCode, update.NewCode, true); err != nil {
+			pterm.Error.Printfln("failed to update %s: %v", update.Path, err)
 			return false
 		}
 	}
 
 	for addIdx, add := range data.AddCodeFiles {
-		pterm.Info.Printfln("Adding new file: %s (%d/%d)", add.Path, addIdx+1, len(data.AddCodeFiles))
+		pterm.Info.Printfln("adding new file: %s (%d/%d)", add.Path, addIdx+1, len(data.AddCodeFiles))
 		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText(fmt.Sprintf("Create file %s?", add.Path)).Show()
 		if !ok {
-			pterm.Warning.Printfln("Skipped creation of: %s", add.Path)
+			pterm.Warning.Printfln("skipped creation of: %s", add.Path)
 			continue
 		}
-		if err := c.agentsConfig.fsAgentConfig.CreateFile(add.Path, add.Content); err != nil {
-			pterm.Error.Printfln("Failed to write %s: %v", add.Path, err)
+		if err := c.toolsConfig.fsToolConfig.CreateFile(add.Path, add.Content); err != nil {
+			pterm.Error.Printfln("failed to write %s: %v", add.Path, err)
 			return false
 		}
 	}
 
 	for remIdx, rem := range data.RemoveCodeFiles {
-		pterm.Info.Printfln("Removing file: %s (%d/%d)", rem.Path, remIdx+1, len(data.RemoveCodeFiles))
+		pterm.Info.Printfln("removing file: %s (%d/%d)", rem.Path, remIdx+1, len(data.RemoveCodeFiles))
 
 		ok, _ := pterm.DefaultInteractiveConfirm.WithDefaultText(fmt.Sprintf("Delete file %s?", rem.Path)).Show()
 		if !ok {
-			pterm.Warning.Printfln("Skipped deletion of: %s", rem.Path)
+			pterm.Warning.Printfln("skipped deletion of: %s", rem.Path)
 			continue
 		}
-		if err := c.agentsConfig.fsAgentConfig.DeleteFile(rem.Path); err != nil {
-			pterm.Error.Printfln("Failed to write %s: %v", rem.Path, err)
+		if err := c.toolsConfig.fsToolConfig.DeleteFile(rem.Path); err != nil {
+			pterm.Error.Printfln("failed to write %s: %v", rem.Path, err)
 			return false
 		}
 	}
-
 	return true
+}
+
+func (c *CoreConfig) DetermineCodeChanges(prompt, personaInstructions, modelID, glob string) *CodeModelResponse {
+	ctx := context.Background()
+
+	promptToSendBedrock := ""
+	addedContext, err := c.enrichWithGlob(glob)
+	if err != nil {
+		return nil
+	}
+	promptToSendBedrock += addedContext
+	if logCtx := c.logger.GetLogContext(); logCtx != "" {
+		promptToSendBedrock += fmt.Sprintf("%s\n%s\n%s", logCtx, prompt, CoderPromptPostProcess)
+	}
+
+	req := aws.BedrockRequest{
+		Messages: []aws.BedrockMessage{
+			{
+				Role: "user",
+				Content: []aws.BedrockContent{
+					{
+						Type: "text",
+						Text: promptToSendBedrock,
+					},
+				},
+			},
+		},
+	}
+
+	respBody, err := c.awsConfig.CallAWSBedrockConverse(ctx, modelID, req, coderToolConfig)
+	if err != nil {
+		pterm.Error.Printf("converse error: %v\n", err)
+		return nil
+	}
+	c.logger.LogMessage("[RESPONSE FOR CODE] \n " + string(respBody) + "\n\n")
+
+	data, err := ExtractResponse(
+		respBody,
+		UnwrapFunc[CodeModelResponse, CodeModelResponseWithParameters](),
+	)
+	if err != nil {
+		pterm.Error.Printf("unable to ExtractResponse (code): %v\n", err)
+		return nil
+	}
+
+	c.logger.LogMessage("[RESPONSE] \n " + data.MarkdownSummary + "\n\n")
+	c.awsConfig.PrintBedrockMessage(data.MarkdownSummary)
+	return data
+
 }
 
 func (c *CoreConfig) ValidateBedrockConfiguration(modelID string) bool {
@@ -177,7 +248,7 @@ func (c *CoreConfig) ValidateBedrockConfiguration(modelID string) bool {
 			},
 		},
 	}
-	c.logger.LogMessage("[REQUEST] health‑check prompt")
+	c.logger.LogMessage("[REQUEST] \n health‑check prompt")
 	respBody, err := c.awsConfig.CallAWSBedrock(ctx, modelID, simpleReq)
 	if err != nil {
 		pterm.Error.Printf("InvokeModel error: %v\n", err)
@@ -190,9 +261,9 @@ func (c *CoreConfig) ValidateBedrockConfiguration(modelID string) bool {
 	}
 	for _, choice := range data.Choices {
 		c.awsConfig.PrintBedrockMessage(choice.Message.Content)
-		c.logger.LogMessage("[RESPONSE] " + choice.Message.Content)
+		c.logger.LogMessage("[RESPONSE] \n " + choice.Message.Content)
 	}
-	c.awsConfig.PrintCost(data.Usage)
+	c.awsConfig.PrintCost(data.Usage, modelID)
 	c.awsConfig.PrintContext(data.Usage)
 	return true
 }

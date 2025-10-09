@@ -8,11 +8,28 @@ import (
 	brainsConfig "brains/internal/config"
 )
 
+type AggregatedModelPricing struct {
+	ModelName             string
+	ModelID               string
+	ProviderName          string
+	InputCostPer1kTokens  float64
+	OutputCostPer1kTokens float64
+}
+
+type modelPricing struct {
+	ModelID               string  `json:"ModelID"`
+	ModelName             string  `json:"ModelName"`
+	InputCostPer1kTokens  float64 `json:"InputCostPer1kTokens"`
+	OutputCostPer1kTokens float64 `json:"OutputCostPer1kTokens"`
+}
+
 type AWSConfig struct {
 	cfg     aws.Config
 	region  string
 	invoker BedrockInvoker
 	logger  brainsConfig.SimpleLogger
+
+	pricing []modelPricing
 }
 
 type ResponseMessage struct {
@@ -88,10 +105,4 @@ type AddCodeFile struct {
 
 type RemoveCodeFile struct {
 	Path string `json:"path"`
-}
-
-type CodeModelResponse struct {
-	CodeUpdates     []CodeUpdate     `json:"code_updates"`
-	AddCodeFiles    []AddCodeFile    `json:"add_code_files,omitempty"`
-	RemoveCodeFiles []RemoveCodeFile `json:"remove_code_files,omitempty"`
 }

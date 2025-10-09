@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
 	bedrockruntimeTypes "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 	"github.com/charmbracelet/glamour"
+	"github.com/muesli/termenv"
 	"github.com/pterm/pterm"
 )
 
@@ -37,14 +38,14 @@ func (a *AWSConfig) CallAWSBedrock(ctx context.Context, modelID string, req Bedr
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal Bedrock request: %w", err)
 	}
-	pterm.Info.Printfln("Size of outbound request: %d", len(body))
+	pterm.Info.Printfln("size of outbound request: %d", len(body))
 	input := &bedrockruntime.InvokeModelInput{
 		Body:        body,
 		ModelId:     aws.String(modelID),
 		ContentType: aws.String("application/json"),
 		Accept:      aws.String("application/json"),
 	}
-	spinner, _ := pterm.DefaultSpinner.Start("Loading response from AWS Bedrock")
+	spinner, _ := pterm.DefaultSpinner.Start("loading response from AWS Bedrock")
 	resp, err := client.InvokeModel(ctx, input)
 	if err != nil {
 		spinner.Fail()
@@ -54,7 +55,12 @@ func (a *AWSConfig) CallAWSBedrock(ctx context.Context, modelID string, req Bedr
 	return resp.Body, nil
 }
 
-func (a *AWSConfig) CallAWSBedrockConverse(ctx context.Context, modelID string, req BedrockRequest) ([]byte, error) {
+func (a *AWSConfig) CallAWSBedrockConverse(
+	ctx context.Context,
+	modelID string,
+	req BedrockRequest,
+	toolConfig *bedrockruntimeTypes.ToolConfiguration,
+) ([]byte, error) {
 	client := a.GetInvoker()
 
 	messages := []bedrockruntimeTypes.Message{}
@@ -77,7 +83,11 @@ func (a *AWSConfig) CallAWSBedrockConverse(ctx context.Context, modelID string, 
 		Messages: messages,
 	}
 
-	spinner, _ := pterm.DefaultSpinner.Start("Loading response from AWS Bedrock (Converse)")
+	if toolConfig != nil {
+		input.ToolConfig = toolConfig
+	}
+
+	spinner, _ := pterm.DefaultSpinner.Start("loading response from AWS Bedrock (Converse)")
 	resp, err := client.ConverseModel(ctx, input)
 	if err != nil {
 		spinner.Fail()
@@ -85,70 +95,87 @@ func (a *AWSConfig) CallAWSBedrockConverse(ctx context.Context, modelID string, 
 	}
 	spinner.Success()
 
-	responseText, ok := resp.Output.(*bedrockruntimeTypes.ConverseOutputMemberMessage)
+	converseOutput, ok := resp.Output.(*bedrockruntimeTypes.ConverseOutputMemberMessage)
 	if !ok {
-		return nil, fmt.Errorf("unexpected response type")
+		return nil, fmt.Errorf("unexpected response type from Converse API")
 	}
-	if len(responseText.Value.Content) == 0 {
-		return nil, fmt.Errorf("empty response content")
-	}
-	var text *bedrockruntimeTypes.ContentBlockMemberText
-	for _, responseBlock := range responseText.Value.Content {
-		returnedText, okText := responseBlock.(*bedrockruntimeTypes.ContentBlockMemberText)
-		if !okText {
-			continue
-		} else {
-			text = returnedText
-			break
+
+	// attempt json
+	for _, block := range converseOutput.Value.Content {
+		if toolResultBlock, ok := block.(*bedrockruntimeTypes.ContentBlockMemberToolUse); ok {
+			data, err := toolResultBlock.Value.Input.MarshalSmithyDocument()
+			if err != nil {
+				return nil, err
+			}
+			return data, nil
 		}
 	}
-	if text == nil {
-		return nil, fmt.Errorf("empty response content (no text)")
+
+	// fall back to text, this may fail
+	for _, block := range converseOutput.Value.Content {
+		if textBlock, ok := block.(*bedrockruntimeTypes.ContentBlockMemberText); ok {
+			pterm.Warning.Println("model returned a text response instead of using the tool. Parsing may be brittle.")
+			return []byte(textBlock.Value), nil
+		}
 	}
-	return []byte(text.Value), nil
+
+	return nil, fmt.Errorf("no tool use or text block found in the response")
 }
 
-func (a *AWSConfig) PrintCost(usage map[string]any) {
+func (c *AWSConfig) pricingFor(modelID string) (modelPricing, bool) {
+	for _, p := range c.pricing {
+		if p.ModelID == modelID {
+			return p, true
+		}
+	}
+	return modelPricing{}, false
+}
+
+func (a *AWSConfig) PrintCost(usage map[string]any, modelID string) {
+	p := modelPricing{}
+	if val, ok := a.pricingFor(modelID); ok {
+		p = val
+	}
 	promptTokens, completionTokens := 0, 0
 	if v, ok := usage["prompt_tokens"]; ok {
-		if val, okFloat := v.(float64); okFloat {
-			promptTokens = int(val)
+		if n, ok := v.(float64); ok {
+			promptTokens = int(n)
 		}
 	}
 	if v, ok := usage["completion_tokens"]; ok {
-		if val, okFloat := v.(float64); okFloat {
-			completionTokens = int(val)
+		if n, ok := v.(float64); ok {
+			completionTokens = int(n)
 		}
 	}
-	const (
-		inputPricePerK  = 0.00015
-		outputPricePerK = 0.0006
-	)
-	cost := (float64(promptTokens) / 1000.0 * inputPricePerK) + (float64(completionTokens) / 1000.0 * outputPricePerK)
-	pterm.Info.Printf("Estimated cost for this request: $%.6f (prompt tokens: %d, completion tokens: %d)\n", cost, promptTokens, completionTokens)
+	cost := (float64(promptTokens)/1000.0)*p.InputCostPer1kTokens + (float64(completionTokens)/1000.0)*p.
+		OutputCostPer1kTokens
+	pterm.Info.Printf("estimated cost for this request: $%.6f (prompt %d, completion %d)\n", cost, promptTokens,
+		completionTokens)
 }
 
 func (a *AWSConfig) PrintContext(usage map[string]any) {
+	// token limit is still a fixed safety bound (128 000)
+	const tokenLimit = 128000
 	promptTokens, completionTokens := 0, 0
 	if v, ok := usage["prompt_tokens"]; ok {
-		if val, okFloat := v.(float64); okFloat {
-			promptTokens = int(val)
+		if n, ok := v.(float64); ok {
+			promptTokens = int(n)
 		}
 	}
 	if v, ok := usage["completion_tokens"]; ok {
-		if val, okFloat := v.(float64); okFloat {
-			completionTokens = int(val)
+		if n, ok := v.(float64); ok {
+			completionTokens = int(n)
 		}
 	}
 	total := promptTokens + completionTokens
-	const tokenLimit = 128000
-	pterm.Info.Printf("Current context used: %d tokens (limit %d)\n", total, tokenLimit)
+	pterm.Info.Printf("current context used: %d tokens (limit %d)\n", total, tokenLimit)
 }
 
 func (a *AWSConfig) PrintBedrockMessage(content string) {
 	r, _ := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
 		glamour.WithWordWrap(120),
+		glamour.WithColorProfile(termenv.ANSI256),
 	)
 	result, _ := r.Render(content)
 	fmt.Println(result)

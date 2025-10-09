@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"brains/internal/agents/file_system"
+	"brains/internal/tools/file_system"
 )
 
 func TestSetContextFromGlob(t *testing.T) {
@@ -50,4 +50,49 @@ func TestSetContextFromGlobFileReadError(t *testing.T) {
 	f, _ := file_system.NewFileSystemConfig()
 	_, err := f.SetContextFromGlob(filepath.Join(dirPath, "*"))
 	assert.Error(t, err)
+}
+
+func TestLoadGitignoreFileNotFound(t *testing.T) {
+	tmp := t.TempDir()
+	orig, _ := os.Getwd()
+	defer func() { _ = os.Chdir(orig) }()
+	_ = os.Chdir(tmp)
+
+	patterns, err := file_system.LoadGitignore(".gitignore")
+	assert.NoError(t, err)
+	assert.Empty(t, patterns)
+}
+
+func TestLoadGitignoreParsesPatterns(t *testing.T) {
+	tmp := t.TempDir()
+	orig, _ := os.Getwd()
+	defer func() { _ = os.Chdir(orig) }()
+	_ = os.Chdir(tmp)
+
+	content := "# comment line\n*.log\nbuild/\n"
+	_ = os.WriteFile(".gitignore", []byte(content), 0o600)
+
+	patterns, err := file_system.LoadGitignore(".gitignore")
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, []string{"*.log", "build/"}, patterns)
+}
+
+func TestIsIgnoredDefaultAndGitignorePatterns(t *testing.T) {
+	tmp := t.TempDir()
+	orig, _ := os.Getwd()
+	defer func() { _ = os.Chdir(orig) }()
+	_ = os.Chdir(tmp)
+
+	_ = os.WriteFile(".gitignore", []byte("*.tmp\nlogs/"), 0o600)
+
+	cfg, err := file_system.NewFileSystemConfig()
+	assert.NoError(t, err)
+
+	assert.True(t, cfg.IsIgnored(".git/config"))
+	assert.True(t, cfg.IsIgnored("package-lock.json"))
+
+	assert.True(t, cfg.IsIgnored("debug.tmp"))
+
+	assert.False(t, cfg.IsIgnored("main.go"))
+	assert.False(t, cfg.IsIgnored("src/utils/helper.go"))
 }

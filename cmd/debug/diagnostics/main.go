@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"brains/internal/agents/browser"
-	"brains/internal/agents/file_system"
 	"brains/internal/aws"
 	"brains/internal/config"
 
@@ -52,21 +50,4 @@ func main() {
 	}
 
 	pterm.DefaultLogger.Info("Model details", pterm.Logger.ArgsFromMap(pterm.DefaultLogger, jsonData))
-
-	fs, err := file_system.NewFileSystemConfig()
-	if err != nil {
-		pterm.Fatal.Printfln("file_system.NewFileSystemConfig: %v", err)
-	}
-
-	fsData, err := fs.SetContextFromGlob("readme.md")
-	if err != nil {
-		pterm.Fatal.Printfln("file_system.SetContextFromGlob: %v", err)
-	}
-	pterm.Info.Printfln("data from glob gather: %s", fsData)
-
-	htmlData, err := browser.FetchWebContext(context.Background(), "https://github.com/madhuravius")
-	if err != nil {
-		pterm.Fatal.Printfln("browser.FetchWebContext: %v", err)
-	}
-	pterm.Info.Printfln("data from web gather: %s", htmlData)
 }

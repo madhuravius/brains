@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"brains/internal/agents/file_system"
+	"brains/internal/tools/file_system"
 )
 
 func captureStdout(fn func()) string {

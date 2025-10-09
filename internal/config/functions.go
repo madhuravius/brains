@@ -11,6 +11,6 @@ func (b *BrainsConfig) GetPersonaInstructions(persona string) string {
 	if !found {
 		return ""
 	}
-	pterm.Info.Printfln("user electing to leverage persona (%s) with text: %s", persona, personaText)
+	pterm.Debug.Printfln("user electing to leverage persona (%s) with text: %s", persona, personaText)
 	return fmt.Sprintf("Human: %s\n\n", personaText)
 }

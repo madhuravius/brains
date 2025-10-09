@@ -30,5 +30,6 @@ output/*
 build/*
 !build/.gitkeep
 
+.brains
 .brains.yml
 *.log

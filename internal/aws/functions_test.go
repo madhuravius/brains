@@ -114,7 +114,7 @@ func TestCallAWSBedrockConverseSuccess(t *testing.T) {
 	convOut := &bedrockruntime.ConverseOutput{Output: &outputMember}
 	inv.On("ConverseModel", mock.Anything, mock.Anything).Return(convOut, nil)
 
-	b, err := cfg.CallAWSBedrockConverse(context.Background(), "model-id", req)
+	b, err := cfg.CallAWSBedrockConverse(context.Background(), "model-id", req, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("response"), b)
 	inv.AssertExpectations(t)
@@ -128,7 +128,7 @@ func TestCallAWSBedrockConverseError(t *testing.T) {
 	req := awsBrains.BedrockRequest{}
 	inv.On("ConverseModel", mock.Anything, mock.Anything).Return(nil, io.ErrUnexpectedEOF)
 
-	_, err := cfg.CallAWSBedrockConverse(context.Background(), "model-id", req)
+	_, err := cfg.CallAWSBedrockConverse(context.Background(), "model-id", req, nil)
 	assert.Error(t, err)
 	inv.AssertExpectations(t)
 }
@@ -136,7 +136,7 @@ func TestCallAWSBedrockConverseError(t *testing.T) {
 func TestPrintCost(t *testing.T) {
 	cfg := &awsBrains.AWSConfig{}
 	assert.NotPanics(t, func() {
-		cfg.PrintCost(map[string]any{"prompt_tokens": 10, "completion_tokens": 5})
+		cfg.PrintCost(map[string]any{"prompt_tokens": 10, "completion_tokens": 5}, "modelid")
 	})
 }
 
