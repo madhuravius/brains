@@ -86,16 +86,34 @@ func (d *DAG[T, D]) Run() (map[string]T, error) {
 func (d *DAG[T, D]) Visualize() {
 	edges, _ := d.graph.Edges()
 
-	adj := make(map[string][]string)
+	adj := make(map[string][]*Vertex[T, D])
 	for _, e := range edges {
-		adj[e.Source] = append(adj[e.Source], e.Target)
+		adj[e.Source] = append(adj[e.Source], d.vertices[e.Target])
+	}
+
+	// Get topological order
+	order, err := graph.TopologicalSort(d.graph)
+	if err != nil {
+		fmt.Println("Error sorting DAG:", err)
+		return
+	}
+	// Assign order to vertices
+	counter := 2
+	for _, name := range order {
+		if name == d.rootVertex.Name {
+			continue
+		}
+		if v, ok := d.vertices[name]; ok {
+			v.Order = counter
+		}
+		counter += 1
 	}
 
 	var sb strings.Builder
 	sb.WriteString("# DAG Visualization: " + d.rootVertex.Name + "\n\n")
 	visited := make(map[string]bool)
 	for name := range d.vertices {
-		visualizeNode(name, adj, visited, &sb)
+		d.visualizeNode(name, adj, visited, &sb)
 	}
 	r, _ := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
@@ -108,13 +126,17 @@ func (d *DAG[T, D]) Visualize() {
 	fmt.Print(out)
 }
 
-func visualizeNode(name string, adj map[string][]string, visited map[string]bool, sb *strings.Builder) {
+func (d *DAG[T, D]) visualizeNode(name string, adj map[string][]*Vertex[T, D], visited map[string]bool, sb *strings.Builder) {
 	if visited[name] {
 		return
 	}
 	visited[name] = true
 
-	sb.WriteString("`" + name + "`")
+	if name == d.rootVertex.Name {
+		sb.WriteString("`1. " + name + "`")
+	} else {
+		sb.WriteString("`" + fmt.Sprintf("%d. ", d.vertices[name].Order) + name + "`")
+	}
 	children := adj[name]
 	if len(children) > 0 {
 		sb.WriteString(" **->** ")
@@ -122,12 +144,12 @@ func visualizeNode(name string, adj map[string][]string, visited map[string]bool
 			if i > 0 {
 				sb.WriteString(", ")
 			}
-			sb.WriteString(c)
+			sb.WriteString(c.Name)
 		}
 	}
 	sb.WriteString("\n\n")
 
 	for _, c := range children {
-		visualizeNode(c, adj, visited, sb)
+		d.visualizeNode(c.Name, adj, visited, sb)
 	}
 }
