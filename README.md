@@ -5,6 +5,8 @@
 
 A simple CLI that wraps around AWS Bedrock and provides convenient abstractions for common LLM workflows. It is designed to help you experiment with Bedrock, explore agentic tooling, and prototype features similar to those found in tools like [Aider](https://github.com/Aider-AI/aider).
 
+__Disclaimer__: Much like Aider, the goal of this project is for me to learn, build, and to ideally get this project to build itself (see [this page](https://aider.chat/HISTORY.html)). _This is a learning exercise and while I intend on using it for myself, use at your own risk!_
+
 ## Table of Contents
 - [Prerequisites](#prerequisites)
 - [Features](#features)
