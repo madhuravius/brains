@@ -5,7 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 
-	brainsConfig "brains/internal/config"
+	brainsConfig "github.com/madhuravius/brains/internal/config"
 )
 
 type AggregatedModelPricing struct {

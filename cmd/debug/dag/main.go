@@ -1,7 +1,7 @@
 package main
 
 import (
-	"brains/internal/dag"
+	"github.com/madhuravius/brains/internal/dag"
 
 	"github.com/pterm/pterm"
 )

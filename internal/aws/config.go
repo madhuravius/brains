@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/pterm/pterm"
 
-	brainsConfig "brains/internal/config"
+	brainsConfig "github.com/madhuravius/brains/internal/config"
 )
 
 type STSClient interface {

@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	awsBrains "brains/internal/aws"
-	mockBrains "brains/internal/mock"
+	awsBrains "github.com/madhuravius/brains/internal/aws"
+	mockBrains "github.com/madhuravius/brains/internal/mock"
 )
 
 func captureStdout(fn func()) string {

@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 
-	"brains/internal/tools/browser"
-	"brains/internal/tools/file_system"
+	"github.com/madhuravius/brains/internal/tools/browser"
+	"github.com/madhuravius/brains/internal/tools/file_system"
 
 	"github.com/pterm/pterm"
 )

@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
-	"brains/internal/aws"
-	"brains/internal/config"
+	"github.com/madhuravius/brains/internal/aws"
+	"github.com/madhuravius/brains/internal/config"
 
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/pterm/pterm"

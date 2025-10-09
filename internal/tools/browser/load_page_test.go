@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"brains/internal/tools/browser"
+	"github.com/madhuravius/brains/internal/tools/browser"
 )
 
 func TestFetchWebContextSuccess(t *testing.T) {

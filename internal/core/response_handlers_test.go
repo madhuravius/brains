@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"brains/internal/core"
+	"github.com/madhuravius/brains/internal/core"
 
 	"github.com/stretchr/testify/assert"
 )

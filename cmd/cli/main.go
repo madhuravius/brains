@@ -7,9 +7,9 @@ import (
 	"github.com/pterm/pterm"
 	"github.com/urfave/cli/v2"
 
-	"brains/internal/aws"
-	"brains/internal/config"
-	"brains/internal/core"
+	"github.com/madhuravius/brains/internal/aws"
+	"github.com/madhuravius/brains/internal/config"
+	"github.com/madhuravius/brains/internal/core"
 )
 
 type CLIConfig struct {

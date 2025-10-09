@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/stretchr/testify/assert"
 
-	mockBrains "brains/internal/mock"
+	mockBrains "github.com/madhuravius/brains/internal/mock"
 )
 
 func TestSetAndValidateCredentialsSuccess(t *testing.T) {

@@ -7,8 +7,8 @@ import (
 
 	"github.com/pterm/pterm"
 
-	"brains/internal/aws"
-	"brains/internal/tools/browser"
+	"github.com/madhuravius/brains/internal/aws"
+	"github.com/madhuravius/brains/internal/tools/browser"
 )
 
 func generateResearchRun[T Researchable](

@@ -6,7 +6,7 @@ import (
 
 	"github.com/pterm/pterm"
 
-	"brains/internal/dag"
+	"github.com/madhuravius/brains/internal/dag"
 )
 
 func (a *AskData) SetResearchData(url, data string) {

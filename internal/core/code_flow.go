@@ -1,11 +1,12 @@
 package core
 
 import (
-	"brains/internal/dag"
 	"context"
 	"fmt"
 
 	"github.com/pterm/pterm"
+
+	"github.com/madhuravius/brains/internal/dag"
 )
 
 func (c *CodeData) SetResearchData(url, data string) {

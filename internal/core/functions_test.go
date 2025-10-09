@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"brains/internal/aws"
-	"brains/internal/core"
-	mockBrains "brains/internal/mock"
+	"github.com/madhuravius/brains/internal/aws"
+	"github.com/madhuravius/brains/internal/core"
+	mockBrains "github.com/madhuravius/brains/internal/mock"
 )
 
 func setupCore() (*core.CoreConfig, *mockBrains.MockInvoker) {
