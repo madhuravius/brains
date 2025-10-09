@@ -117,8 +117,14 @@ func main() {
 					}
 					cliConfig.validateAWSCredentials()
 					personaInstructions := cliConfig.brainsConfig.GetPersonaInstructions(cliConfig.persona)
-					if !cliConfig.coreConfig.Code(prompt, personaInstructions, cliConfig.brainsConfig.Model, cliConfig.glob) {
-						os.Exit(0)
+					if err != cliConfig.coreConfig.CodeFlow(context.Background(), &core.LLMRequest{
+						Prompt:              prompt,
+						PersonaInstructions: personaInstructions,
+						ModelID:             cliConfig.brainsConfig.Model,
+						Glob:                cliConfig.glob,
+					}) {
+						pterm.Error.Println("error on code flow execution")
+						os.Exit(1)
 					}
 
 					pterm.Success.Println("code execution complete")

@@ -33,6 +33,7 @@ type askDataDAGFunction func(inputs map[string]string) (string, error)
 
 type CodeData struct {
 	ResearchData
+	CodeModelResponse *CodeModelResponse
 }
 type codeDataDAGFunction func(inputs map[string]string) (string, error)
 

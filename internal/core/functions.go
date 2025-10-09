@@ -143,52 +143,7 @@ func (c *CoreConfig) Research(prompt, modelID, glob string) *ResearchActions {
 	return &data.ResearchActions
 }
 
-func (c *CoreConfig) Code(prompt, personaInstructions, modelID, glob string) bool {
-	ctx := context.Background()
-
-	promptToSendBedrock := ""
-	addedContext, err := c.enrichWithGlob(glob)
-	if err != nil {
-		return false
-	}
-	promptToSendBedrock += addedContext
-	if logCtx := c.logger.GetLogContext(); logCtx != "" {
-		promptToSendBedrock += fmt.Sprintf("%s\n%s\n%s", logCtx, prompt, CoderPromptPostProcess)
-	}
-
-	req := aws.BedrockRequest{
-		Messages: []aws.BedrockMessage{
-			{
-				Role: "user",
-				Content: []aws.BedrockContent{
-					{
-						Type: "text",
-						Text: promptToSendBedrock,
-					},
-				},
-			},
-		},
-	}
-
-	respBody, err := c.awsConfig.CallAWSBedrockConverse(ctx, modelID, req, coderToolConfig)
-	if err != nil {
-		pterm.Error.Printf("converse error: %v\n", err)
-		return false
-	}
-	c.logger.LogMessage("[RESPONSE FOR CODE] \n " + string(respBody) + "\n\n")
-
-	data, err := ExtractResponse(
-		respBody,
-		UnwrapFunc[CodeModelResponse, CodeModelResponseWithParameters](),
-	)
-	if err != nil {
-		pterm.Error.Printf("unable to ExtractResponse (code): %v\n", err)
-		return false
-	}
-
-	c.logger.LogMessage("[RESPONSE] \n " + data.MarkdownSummary + "\n\n")
-	c.awsConfig.PrintBedrockMessage(data.MarkdownSummary)
-
+func (c *CoreConfig) ExecuteEditCode(data *CodeModelResponse) bool {
 	pterm.Info.Printfln("reviewing each code update, for review one at a time. %d pending updates", len(data.CodeUpdates))
 
 	for updateIdx, update := range data.CodeUpdates {
@@ -226,8 +181,56 @@ func (c *CoreConfig) Code(prompt, personaInstructions, modelID, glob string) boo
 			return false
 		}
 	}
-
 	return true
+}
+
+func (c *CoreConfig) DetermineCodeChanges(prompt, personaInstructions, modelID, glob string) *CodeModelResponse {
+	ctx := context.Background()
+
+	promptToSendBedrock := ""
+	addedContext, err := c.enrichWithGlob(glob)
+	if err != nil {
+		return nil
+	}
+	promptToSendBedrock += addedContext
+	if logCtx := c.logger.GetLogContext(); logCtx != "" {
+		promptToSendBedrock += fmt.Sprintf("%s\n%s\n%s", logCtx, prompt, CoderPromptPostProcess)
+	}
+
+	req := aws.BedrockRequest{
+		Messages: []aws.BedrockMessage{
+			{
+				Role: "user",
+				Content: []aws.BedrockContent{
+					{
+						Type: "text",
+						Text: promptToSendBedrock,
+					},
+				},
+			},
+		},
+	}
+
+	respBody, err := c.awsConfig.CallAWSBedrockConverse(ctx, modelID, req, coderToolConfig)
+	if err != nil {
+		pterm.Error.Printf("converse error: %v\n", err)
+		return nil
+	}
+	c.logger.LogMessage("[RESPONSE FOR CODE] \n " + string(respBody) + "\n\n")
+
+	data, err := ExtractResponse(
+		respBody,
+		UnwrapFunc[CodeModelResponse, CodeModelResponseWithParameters](),
+	)
+	if err != nil {
+		pterm.Error.Printf("unable to ExtractResponse (code): %v\n", err)
+		return nil
+	}
+
+	c.logger.LogMessage("[RESPONSE] \n " + data.MarkdownSummary + "\n\n")
+	c.awsConfig.PrintBedrockMessage(data.MarkdownSummary)
+	return data
+
 }
 
 func (c *CoreConfig) ValidateBedrockConfiguration(modelID string) bool {

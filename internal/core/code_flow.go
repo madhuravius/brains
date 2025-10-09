@@ -3,6 +3,7 @@ package core
 import (
 	"brains/internal/dag"
 	"context"
+	"fmt"
 
 	"github.com/pterm/pterm"
 )
@@ -14,19 +15,28 @@ func (c *CodeData) SetResearchData(url, data string) {
 	c.ResearchData[url] = data
 }
 
-func (a *CodeData) generateCodeFunction(coreConfig *CoreConfig, req *LLMRequest) codeDataDAGFunction {
+func (c *CodeData) generateDetermineCodeChangesFunction(coreConfig *CoreConfig, req *LLMRequest) codeDataDAGFunction {
 	additionalContext := ""
-	for url, data := range a.ResearchData {
+	for url, data := range c.ResearchData {
 		additionalContext += "------ scraped content from: " + url + "\n\n\n" + data + "\n\n\n" + "------------"
 	}
 	return func(inputs map[string]string) (string, error) {
-		coreConfig.Code(
+		c.CodeModelResponse = coreConfig.DetermineCodeChanges(
 			additionalContext+"\n\n\nwere visited above with content if available, you can now return to answering the prompt.\n\n\n"+req.Prompt,
 			req.PersonaInstructions,
 			req.ModelID,
 			req.Glob,
 		)
 
+		return "", nil
+	}
+}
+
+func (c *CodeData) generateExecuteCodeEditsFunction(coreConfig *CoreConfig) codeDataDAGFunction {
+	return func(inputs map[string]string) (string, error) {
+		if !coreConfig.ExecuteEditCode(c.CodeModelResponse) {
+			return "", fmt.Errorf("error in generateExecuteCodeEditsFunction, unable to execute edits")
+		}
 		return "", nil
 	}
 }
@@ -49,14 +59,22 @@ func (c *CoreConfig) CodeFlow(ctx context.Context, llmRequest *LLMRequest) error
 	}
 	_ = codeDAG.AddVertex(researchVertex)
 
-	codeVertex := &dag.Vertex[string, *CodeData]{
-		Name: "code",
+	determineCodeChangesVertex := &dag.Vertex[string, *CodeData]{
+		Name: "determine_code_changes",
 		DAG:  codeDAG,
-		Run:  codeData.generateCodeFunction(c, llmRequest),
+		Run:  codeData.generateDetermineCodeChangesFunction(c, llmRequest),
 	}
-	_ = codeDAG.AddVertex(codeVertex)
+	_ = codeDAG.AddVertex(determineCodeChangesVertex)
 
-	codeDAG.Connect(researchVertex.Name, codeVertex.Name)
+	executeCodeEditsVertex := &dag.Vertex[string, *CodeData]{
+		Name: "execute_code_edits",
+		DAG:  codeDAG,
+		Run:  codeData.generateExecuteCodeEditsFunction(c),
+	}
+	_ = codeDAG.AddVertex(executeCodeEditsVertex)
+
+	codeDAG.Connect(researchVertex.Name, determineCodeChangesVertex.Name)
+	codeDAG.Connect(determineCodeChangesVertex.Name, executeCodeEditsVertex.Name)
 
 	pterm.Success.Println("codeDAG beginning execution, planned flow printed")
 	codeDAG.Visualize()
