@@ -8,7 +8,7 @@ import (
 	"atomicgo.dev/keyboard"
 	"github.com/stretchr/testify/assert"
 
-	"brains/internal/tools/file_system"
+	"github.com/madhuravius/brains/internal/tools/file_system"
 )
 
 func TestUpdateFile_ReplacesContent(t *testing.T) {

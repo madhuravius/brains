@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	mockBrains "brains/internal/mock"
+	mockBrains "github.com/madhuravius/brains/internal/mock"
 )
 
 func TestClientInvokerExecutesAllMethods(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"brains/internal/config"
+	"github.com/madhuravius/brains/internal/config"
 )
 
 func TestGetPersonaInstructionsFormatting(t *testing.T) {

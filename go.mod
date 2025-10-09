@@ -1,4 +1,4 @@
-module brains
+module github.com/madhuravius/brains
 
 go 1.24.4
 

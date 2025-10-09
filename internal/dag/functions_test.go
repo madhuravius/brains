@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"brains/internal/dag"
+	"github.com/madhuravius/brains/internal/dag"
 )
 
 func TestDAGVertexAcyclic(t *testing.T) {

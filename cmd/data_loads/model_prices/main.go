@@ -17,7 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/pricing"
 	"github.com/pterm/pterm"
 
-	brainsAws "brains/internal/aws"
+	brainsAws "github.com/madhuravius/brains/internal/aws"
 )
 
 const REGION = "us-east-1"

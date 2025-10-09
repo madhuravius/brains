@@ -5,9 +5,9 @@ import (
 
 	"github.com/pterm/pterm"
 
-	"brains/internal/aws"
-	brainsConfig "brains/internal/config"
-	"brains/internal/tools/file_system"
+	"github.com/madhuravius/brains/internal/aws"
+	brainsConfig "github.com/madhuravius/brains/internal/config"
+	"github.com/madhuravius/brains/internal/tools/file_system"
 )
 
 func NewCoreConfig(awsConfig *aws.AWSConfig) *CoreConfig {

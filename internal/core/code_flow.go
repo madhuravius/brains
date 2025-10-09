@@ -1,7 +1,7 @@
 package core
 
 import (
-	"brains/internal/dag"
+	"github.com/madhuravius/brains/internal/dag"
 	"context"
 	"fmt"
 

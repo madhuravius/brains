@@ -1,9 +1,9 @@
 package core
 
 import (
-	awsConfig "brains/internal/aws"
-	brainsConfig "brains/internal/config"
-	"brains/internal/tools/file_system"
+	awsConfig "github.com/madhuravius/brains/internal/aws"
+	brainsConfig "github.com/madhuravius/brains/internal/config"
+	"github.com/madhuravius/brains/internal/tools/file_system"
 )
 
 type toolsConfig struct {
