@@ -38,6 +38,7 @@ var LanguageSymbolRules = map[string][]SymbolRule{
 	"python": {
 		{"function_definition", "name", "function"},
 		{"class_definition", "name", "class"},
+		{"assignment", "left", "constant"},
 	},
 
 	"javascript": {
@@ -96,12 +97,5 @@ var LanguageSymbolRules = map[string][]SymbolRule{
 		{"struct_item", "name", "struct"},
 		{"enum_item", "name", "enum"},
 		{"trait_item", "name", "trait"},
-	},
-
-	"elixir": {
-		{"defmodule", "name", "module"},
-		{"def", "name", "function"},
-		{"defp", "name", "function"},
-		{"defmacro", "name", "macro"},
 	},
 }

@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"strings"
 
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/cpp"
 	"github.com/smacker/go-tree-sitter/csharp"
-	"github.com/smacker/go-tree-sitter/elixir"
 	"github.com/smacker/go-tree-sitter/golang"
 	"github.com/smacker/go-tree-sitter/java"
 	"github.com/smacker/go-tree-sitter/javascript"
@@ -48,8 +48,6 @@ func ParseFile(ctx context.Context, path, lang string) (*FileMap, error) {
 		parser.SetLanguage(php.GetLanguage())
 	case "rust":
 		parser.SetLanguage(rust.GetLanguage())
-	case "elixir":
-		parser.SetLanguage(elixir.GetLanguage())
 	default:
 		return &FileMap{Path: path, Language: lang}, nil
 	}
@@ -95,10 +93,18 @@ func ExtractSymbols(lang string, root *sitter.Node, source []byte) []*SymbolMap 
 	}
 
 	var symbols []*SymbolMap
+	appendSymbol := func(symType, name string, n *sitter.Node) {
+		symbols = append(symbols, &SymbolMap{
+			Type:  symType,
+			Name:  name,
+			Start: int(n.StartByte()),
+			End:   int(n.EndByte()),
+		})
+	}
 
 	var walk func(n *sitter.Node)
 	walk = func(n *sitter.Node) {
-		// --- special handling for Go ---
+		// --- special handling for Go type_declaration (structs/interfaces) ---
 		if lang == "go" && n.Type() == "type_declaration" {
 			for i := 0; i < int(n.ChildCount()); i++ {
 				spec := n.Child(i)
@@ -120,12 +126,15 @@ func ExtractSymbols(lang string, root *sitter.Node, source []byte) []*SymbolMap 
 						symType = "interface"
 					}
 				}
-				symbols = append(symbols, &SymbolMap{
-					Type:  symType,
-					Name:  name,
-					Start: int(n.StartByte()),
-					End:   int(n.EndByte()),
-				})
+				appendSymbol(symType, name, n)
+			}
+		}
+
+		// --- special handling for Python constants ---
+		if lang == "python" && n.Type() == "assignment" {
+			name := childContent(n, "left", source)
+			if name != "" && name == strings.ToUpper(name) {
+				appendSymbol("constant", name, n)
 			}
 		}
 
@@ -136,7 +145,6 @@ func ExtractSymbols(lang string, root *sitter.Node, source []byte) []*SymbolMap 
 				if rule.FieldName != "" {
 					name = childContent(n, rule.FieldName, source)
 				} else {
-					// fallback: look for identifier children
 					for i := 0; i < int(n.ChildCount()); i++ {
 						c := n.Child(i)
 						if c.Type() == "identifier" {
@@ -147,16 +155,12 @@ func ExtractSymbols(lang string, root *sitter.Node, source []byte) []*SymbolMap 
 				}
 
 				if name != "" {
-					symbols = append(symbols, &SymbolMap{
-						Type:  rule.SymbolType,
-						Name:  name,
-						Start: int(n.StartByte()),
-						End:   int(n.EndByte()),
-					})
+					appendSymbol(rule.SymbolType, name, n)
 				}
 			}
 		}
 
+		// --- recurse down ---
 		for i := 0; i < int(n.ChildCount()); i++ {
 			walk(n.Child(i))
 		}

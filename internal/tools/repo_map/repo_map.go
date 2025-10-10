@@ -27,7 +27,7 @@ func BuildRepoMap(ctx context.Context, repoRoot string) (*RepoMap, error) {
 	var repo RepoMap
 	repo.Path = repoRoot
 
-	err := filepath.Walk(repoRoot, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(repoRoot, func(path string, info os.FileInfo, _ error) error {
 		if info.IsDir() || !isSourceFile(path) {
 			return nil
 		}
@@ -49,7 +49,7 @@ func BuildRepoMap(ctx context.Context, repoRoot string) (*RepoMap, error) {
 
 func isSourceFile(path string) bool {
 	switch filepath.Ext(path) {
-	case ".go", ".py", ".js", ".ts", ".java":
+	case ".go", ".py", ".js", ".ts", ".java", ".rb", ".cs", ".rs", ".php", ".cpp":
 		return true
 	default:
 		return false
@@ -77,8 +77,6 @@ func detectLanguage(path string) string {
 		return "csharp"
 	case ".rb":
 		return "ruby"
-	case ".ex":
-		return "elixir"
 	case ".php":
 		return "php"
 	default:
