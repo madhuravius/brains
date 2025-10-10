@@ -15,7 +15,7 @@ func main() {
 	const (
 		glob    = "cmd/debug/commands/ask/main.go"
 		modelID = "openai.gpt-oss-120b-1:0"
-		prompt  = "as per best practices from https://google.github.io/styleguide/go/best-practices.html and suggest improvements to this codebase"
+		prompt  = "as per best practices from https://google.github.io/styleguide/go/best-practices.html and suggest improvements to this file"
 	)
 
 	ctx := context.Background()

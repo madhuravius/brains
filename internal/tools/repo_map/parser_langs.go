@@ -16,7 +16,7 @@ func cppParams(n *sitter.Node, src []byte) []Param {
 	}
 	size := int(plist.ChildCount())
 	out := make([]Param, size)
-	for i := 0; i < size; i++ {
+	for i := range size {
 		p := plist.Child(i)
 		switch p.Type() {
 		case "parameter_declaration":

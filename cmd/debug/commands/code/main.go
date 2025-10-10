@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 
+	"atomicgo.dev/keyboard"
 	"github.com/pterm/pterm"
 
 	"github.com/madhuravius/brains/internal/aws"
@@ -43,6 +44,10 @@ func main() {
 		PersonaInstructions: personaInstructions,
 		Prompt:              prompt,
 	}
+
+	go func() {
+		_ = keyboard.SimulateKeyPress('N')
+	}()
 
 	if err := coreConfig.CodeFlow(ctx, req); err != nil {
 		pterm.Error.Printf("error on coreConfig.CodeFlow: %v\n", err)
