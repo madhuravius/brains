@@ -18,6 +18,7 @@ require (
 	github.com/muesli/termenv v0.16.0
 	github.com/pterm/pterm v0.12.81
 	github.com/sergi/go-diff v1.2.0
+	github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v2 v2.27.7
 	gopkg.in/yaml.v3 v3.0.1
