@@ -2,7 +2,7 @@ package main
 
 const Pi = 3.14
 
-var version = "v1.0"
+var version = "v1.0" //nolint:unused
 
 type Person struct {
 	Name string
