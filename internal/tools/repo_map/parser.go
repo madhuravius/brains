@@ -1,6 +1,7 @@
 package repo_map
 
 import (
+	"bytes"
 	"context"
 	"os"
 
@@ -94,11 +95,57 @@ func ExtractSymbols(lang string, root *sitter.Node, source []byte) []*SymbolMap 
 	}
 
 	var symbols []*SymbolMap
+
 	var walk func(n *sitter.Node)
 	walk = func(n *sitter.Node) {
+		// --- special handling for Go ---
+		if lang == "go" && n.Type() == "type_declaration" {
+			for i := 0; i < int(n.ChildCount()); i++ {
+				spec := n.Child(i)
+				if spec.Type() != "type_spec" {
+					continue
+				}
+				nameNode := spec.ChildByFieldName("name")
+				if nameNode == nil {
+					continue
+				}
+				name := nodeContent(nameNode, source)
+				typeNode := spec.ChildByFieldName("type")
+				symType := "type"
+				if typeNode != nil {
+					switch typeNode.Type() {
+					case "struct_type":
+						symType = "struct"
+					case "interface_type":
+						symType = "interface"
+					}
+				}
+				symbols = append(symbols, &SymbolMap{
+					Type:  symType,
+					Name:  name,
+					Start: int(n.StartByte()),
+					End:   int(n.EndByte()),
+				})
+			}
+		}
+
+		// --- generic rule application ---
 		for _, rule := range rules {
 			if n.Type() == rule.NodeType {
-				name := childContent(n, rule.FieldName, source)
+				name := ""
+				if rule.FieldName != "" {
+					name = childContent(n, rule.FieldName, source)
+				} else {
+					// fallback: look for identifier children
+					for i := 0; i < int(n.ChildCount()); i++ {
+						c := n.Child(i)
+						if c.Type() == "identifier" {
+							name = nodeContent(c, source)
+							break
+						}
+					}
+				}
+
 				if name != "" {
 					symbols = append(symbols, &SymbolMap{
 						Type:  rule.SymbolType,
@@ -109,18 +156,24 @@ func ExtractSymbols(lang string, root *sitter.Node, source []byte) []*SymbolMap 
 				}
 			}
 		}
+
 		for i := 0; i < int(n.ChildCount()); i++ {
 			walk(n.Child(i))
 		}
 	}
+
 	walk(root)
 	return symbols
 }
 
-func childContent(n *sitter.Node, field string, source []byte) string {
-	child := n.ChildByFieldName(field)
-	if child == nil {
+func childContent(n *sitter.Node, field string, src []byte) string {
+	c := n.ChildByFieldName(field)
+	if c == nil {
 		return ""
 	}
-	return child.Content(source)
+	return nodeContent(c, src)
+}
+
+func nodeContent(n *sitter.Node, src []byte) string {
+	return string(bytes.TrimSpace(src[n.StartByte():n.EndByte()]))
 }

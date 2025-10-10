@@ -31,7 +31,8 @@ var LanguageSymbolRules = map[string][]SymbolRule{
 	"go": {
 		{"function_declaration", "name", "function"},
 		{"method_declaration", "name", "method"},
-		{"type_declaration", "name", "type"},
+		{"const_spec", "name", "constant"},
+		{"var_spec", "name", "variable"},
 	},
 
 	"python": {
@@ -41,30 +42,39 @@ var LanguageSymbolRules = map[string][]SymbolRule{
 
 	"javascript": {
 		{"function_declaration", "name", "function"},
+		{"method_definition", "name", "method"},
 		{"class_declaration", "name", "class"},
+		{"arrow_function", "", "function"},
 	},
 
 	"typescript": {
 		{"function_declaration", "name", "function"},
+		{"method_signature", "name", "method"},
 		{"class_declaration", "name", "class"},
+		{"interface_declaration", "name", "interface"},
 	},
 
 	"java": {
 		{"method_declaration", "name", "method"},
+		{"constructor_declaration", "name", "constructor"},
 		{"class_declaration", "name", "class"},
 		{"interface_declaration", "name", "interface"},
+		{"enum_declaration", "name", "enum"},
 	},
 
 	"cpp": {
 		{"function_definition", "declarator", "function"},
 		{"class_specifier", "name", "class"},
 		{"struct_specifier", "name", "struct"},
+		{"namespace_definition", "name", "namespace"},
 	},
 
 	"csharp": {
 		{"method_declaration", "name", "method"},
+		{"constructor_declaration", "name", "constructor"},
 		{"class_declaration", "name", "class"},
 		{"struct_declaration", "name", "struct"},
+		{"interface_declaration", "name", "interface"},
 	},
 
 	"ruby": {
@@ -75,7 +85,9 @@ var LanguageSymbolRules = map[string][]SymbolRule{
 
 	"php": {
 		{"function_definition", "name", "function"},
+		{"method_declaration", "name", "method"},
 		{"class_declaration", "name", "class"},
+		{"interface_declaration", "name", "interface"},
 	},
 
 	"rust": {
@@ -83,14 +95,13 @@ var LanguageSymbolRules = map[string][]SymbolRule{
 		{"impl_item", "name", "impl"},
 		{"struct_item", "name", "struct"},
 		{"enum_item", "name", "enum"},
+		{"trait_item", "name", "trait"},
 	},
 
 	"elixir": {
-		{"module", "name", "module"},
-		{"function_clause", "name", "function"},
-		{"function_definition", "name", "function"},
+		{"defmodule", "name", "module"},
 		{"def", "name", "function"},
 		{"defp", "name", "function"},
-		{"defmodule", "name", "module"},
+		{"defmacro", "name", "macro"},
 	},
 }
