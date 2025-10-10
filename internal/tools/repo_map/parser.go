@@ -460,18 +460,6 @@ func hasBlankLineBetween(src []byte, a, b uint32) bool {
 	return strings.Contains(string(src[a:b]), "\n\n")
 }
 
-func hasNonWhitespaceBetween(src []byte, a, b uint32) bool {
-	if b <= a {
-		return false
-	}
-	for _, r := range src[a:b] {
-		if r != ' ' && r != '\t' && r != '\n' && r != '\r' {
-			return true
-		}
-	}
-	return false
-}
-
 func extractParams(lang string, n *sitter.Node, src []byte) []Param {
 	switch lang {
 	case "go":
@@ -507,8 +495,9 @@ func cppParams(n *sitter.Node, src []byte) []Param {
 	if plist == nil {
 		return nil
 	}
-	var out []Param
-	for i := 0; i < int(plist.ChildCount()); i++ {
+	size := int(plist.ChildCount())
+	out := make([]Param, size)
+	for i := 0; i < size; i++ {
 		p := plist.Child(i)
 		switch p.Type() {
 		case "parameter_declaration":
@@ -889,7 +878,7 @@ func jsLikeFallbackParams(text string) []Param {
 	}
 	inner := text[start+1 : end]
 	parts := strings.Split(inner, ",")
-	var out []Param
+	out := make([]Param, len(parts))
 	for _, p := range parts {
 		p = strings.TrimSpace(p)
 		if p == "" {
