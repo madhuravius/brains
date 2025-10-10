@@ -8,19 +8,13 @@ import (
 	"testing"
 
 	"github.com/madhuravius/brains/internal/tools/repo_map"
+	"github.com/stretchr/testify/assert"
 )
 
 func mustContain(t *testing.T, s, sub string) {
 	t.Helper()
 	if !strings.Contains(s, sub) {
 		t.Fatalf("expected to contain %q\nGot:\n%s", sub, s)
-	}
-}
-
-func shouldContain(t *testing.T, s, sub string) {
-	t.Helper()
-	if !strings.Contains(s, sub) {
-		t.Errorf("expected to contain %q\nGot:\n%s", sub, s)
 	}
 }
 
@@ -43,25 +37,34 @@ func renderSingleFile(t *testing.T, lang, relpath string) string {
 	return out
 }
 
+func TestRepoMap(t *testing.T) {
+	ctx := context.Background()
+	path := "test_fixtures"
+	repoMap, err := repo_map.BuildRepoMap(ctx, path)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, repoMap)
+}
+
 func TestGo_DocsAndParams(t *testing.T) {
 	t.Parallel()
 	out := renderSingleFile(t, "go", "go/sample.go")
 
 	// Symbols
-	shouldContain(t, out, "- struct Person")
-	shouldContain(t, out, "- interface Greeter")
-	shouldContain(t, out, "- constant Pi")
-	shouldContain(t, out, "- variable version")
-	shouldContain(t, out, "- function SayHello")
-	shouldContain(t, out, "- method Greet")
+	assert.Contains(t, out, "- struct Person")
+	assert.Contains(t, out, "- interface Greeter")
+	assert.Contains(t, out, "- constant Pi")
+	assert.Contains(t, out, "- variable version")
+	assert.Contains(t, out, "- function SayHello")
+	assert.Contains(t, out, "- method Greet")
 
 	// Params (coarse)
-	shouldContain(t, out, "SayHello(")
-	shouldContain(t, out, "name")
-	shouldContain(t, out, "times")
+	assert.Contains(t, out, "SayHello(")
+	assert.Contains(t, out, "name")
+	assert.Contains(t, out, "times")
 
 	// Docs (from leading comments)
-	shouldContain(t, out, "Doc: SayHello says hi")
+	assert.Contains(t, out, "Doc: SayHello says hi")
 }
 
 func TestPython_DocsAndParams(t *testing.T) {
@@ -69,15 +72,15 @@ func TestPython_DocsAndParams(t *testing.T) {
 	out := renderSingleFile(t, "python", "python/sample.py")
 
 	// Symbols
-	shouldContain(t, out, "- class Person")
-	shouldContain(t, out, "- function greet")
+	assert.Contains(t, out, "- class Person")
+	assert.Contains(t, out, "- function greet")
 
 	// Params
-	shouldContain(t, out, "greet(name")
+	assert.Contains(t, out, "greet(name")
 
 	// Docs (docstrings)
-	shouldContain(t, out, "Doc: Greet someone.")
-	shouldContain(t, out, "Doc: Represents a person.")
+	assert.Contains(t, out, "Doc: Greet someone.")
+	assert.Contains(t, out, "Doc: Represents a person.")
 }
 
 func TestJavaScript_DocsAndParams(t *testing.T) {
@@ -85,17 +88,17 @@ func TestJavaScript_DocsAndParams(t *testing.T) {
 	out := renderSingleFile(t, "javascript", "javascript/sample.js")
 
 	// Symbols
-	shouldContain(t, out, "- function greet")
-	shouldContain(t, out, "- class Person")
-	shouldContain(t, out, "- method speak")
+	assert.Contains(t, out, "- function greet")
+	assert.Contains(t, out, "- class Person")
+	assert.Contains(t, out, "- method speak")
 
 	// Params
-	shouldContain(t, out, "greet(name")
-	shouldContain(t, out, "speak(msg")
+	assert.Contains(t, out, "greet(name")
+	assert.Contains(t, out, "speak(msg")
 
 	// Docs (JSDoc)
-	shouldContain(t, out, "Doc: Say hi")
-	shouldContain(t, out, "Doc: Speak something")
+	assert.Contains(t, out, "Doc: Say hi")
+	assert.Contains(t, out, "Doc: Speak something")
 }
 
 func TestTypeScript_DocsAndParams(t *testing.T) {
@@ -103,17 +106,17 @@ func TestTypeScript_DocsAndParams(t *testing.T) {
 	out := renderSingleFile(t, "typescript", "typescript/sample.ts")
 
 	// Symbols
-	shouldContain(t, out, "- function doThing")
-	shouldContain(t, out, "- class MyClass")
-	shouldContain(t, out, "- interface IThing")
+	assert.Contains(t, out, "- function doThing")
+	assert.Contains(t, out, "- class MyClass")
+	assert.Contains(t, out, "- interface IThing")
 
 	// Params (typed + rest). Use partial contains for stability.
-	shouldContain(t, out, "doThing(")
-	shouldContain(t, out, "x: number")
-	shouldContain(t, out, "...rest")
+	assert.Contains(t, out, "doThing(")
+	assert.Contains(t, out, "x: number")
+	assert.Contains(t, out, "...rest")
 
 	// Docs
-	shouldContain(t, out, "Doc: Do a thing")
+	assert.Contains(t, out, "Doc: Do a thing")
 }
 
 func TestJava_DocsAndParams(t *testing.T) {
@@ -121,21 +124,21 @@ func TestJava_DocsAndParams(t *testing.T) {
 	out := renderSingleFile(t, "java", "java/sample.java")
 
 	// Symbols
-	shouldContain(t, out, "- class Service")
-	shouldContain(t, out, "- constructor Service")
-	shouldContain(t, out, "- method execute")
+	assert.Contains(t, out, "- class Service")
+	assert.Contains(t, out, "- constructor Service")
+	assert.Contains(t, out, "- method execute")
 
 	// Params (typed + varargs). Use partials for stability.
-	shouldContain(t, out, "execute(")
-	shouldContain(t, out, "value: String")
+	assert.Contains(t, out, "execute(")
+	assert.Contains(t, out, "value: String")
 	// If your formatting is "String value", keep this alternative:
-	// shouldContain(t, out, "String")
-	// shouldContain(t, out, "value")
-	shouldContain(t, out, "...") // spread/varargs marker appears on one param
+	// assert.Contains(t, out, "String")
+	// assert.Contains(t, out, "value")
+	assert.Contains(t, out, "...") // spread/varargs marker appears on one param
 
 	// Docs (Javadoc)
-	shouldContain(t, out, "Doc: Service class")
-	shouldContain(t, out, "Doc: Execute work")
+	assert.Contains(t, out, "Doc: Service class")
+	assert.Contains(t, out, "Doc: Execute work")
 }
 
 func TestCPP_DocsAndParams(t *testing.T) {
@@ -143,14 +146,14 @@ func TestCPP_DocsAndParams(t *testing.T) {
 	out := renderSingleFile(t, "cpp", "cpp/sample.cpp")
 
 	// Symbols
-	shouldContain(t, out, "- function add")
-	shouldContain(t, out, "- class Box")
-	shouldContain(t, out, "- struct Data")
+	assert.Contains(t, out, "- function add")
+	assert.Contains(t, out, "- class Box")
+	assert.Contains(t, out, "- struct Data")
 
 	// Params (typed)
-	shouldContain(t, out, "add(")
-	shouldContain(t, out, "a: int")
-	shouldContain(t, out, "b: int")
+	assert.Contains(t, out, "add(")
+	assert.Contains(t, out, "a: int")
+	assert.Contains(t, out, "b: int")
 }
 
 func TestCSharp_DocsAndParams(t *testing.T) {
@@ -158,20 +161,20 @@ func TestCSharp_DocsAndParams(t *testing.T) {
 	out := renderSingleFile(t, "csharp", "csharp/sample.cs")
 
 	// Symbols
-	shouldContain(t, out, "- interface IRepo")
-	shouldContain(t, out, "- struct Point")
-	shouldContain(t, out, "- class Person")
-	shouldContain(t, out, "- method Speak")
+	assert.Contains(t, out, "- interface IRepo")
+	assert.Contains(t, out, "- struct Point")
+	assert.Contains(t, out, "- class Person")
+	assert.Contains(t, out, "- method Speak")
 
 	// Params (modifiers: this, ref, out, params)
-	shouldContain(t, out, "Speak(")
-	shouldContain(t, out, "this ")
-	shouldContain(t, out, "ref ")
-	shouldContain(t, out, "out ")
-	shouldContain(t, out, "params ")
+	assert.Contains(t, out, "Speak(")
+	assert.Contains(t, out, "this ")
+	assert.Contains(t, out, "ref ")
+	assert.Contains(t, out, "out ")
+	assert.Contains(t, out, "params ")
 
 	// Docs (triple-slash)
-	shouldContain(t, out, "Doc: Speak doc")
+	assert.Contains(t, out, "Doc: Speak doc")
 }
 
 func TestRuby_DocsAndParams(t *testing.T) {
@@ -179,20 +182,20 @@ func TestRuby_DocsAndParams(t *testing.T) {
 	out := renderSingleFile(t, "ruby", "ruby/sample.rb")
 
 	// Symbols
-	shouldContain(t, out, "- class Person")
-	shouldContain(t, out, "- method speak")
-	shouldContain(t, out, "- module MyMod")
+	assert.Contains(t, out, "- class Person")
+	assert.Contains(t, out, "- method speak")
+	assert.Contains(t, out, "- module MyMod")
 
 	// Params: required, splat, keyword splat, block
-	shouldContain(t, out, "speak(")
-	shouldContain(t, out, "name")
-	shouldContain(t, out, "*rest")
-	shouldContain(t, out, "**kw")
-	shouldContain(t, out, "&blk")
+	assert.Contains(t, out, "speak(")
+	assert.Contains(t, out, "name")
+	assert.Contains(t, out, "*rest")
+	assert.Contains(t, out, "**kw")
+	assert.Contains(t, out, "&blk")
 
 	// Docs (leading # comments)
-	shouldContain(t, out, "Doc: Person doc")
-	shouldContain(t, out, "Doc: speak doc")
+	assert.Contains(t, out, "Doc: Person doc")
+	assert.Contains(t, out, "Doc: speak doc")
 }
 
 func TestPHP_DocsAndParams(t *testing.T) {
@@ -200,20 +203,20 @@ func TestPHP_DocsAndParams(t *testing.T) {
 	out := renderSingleFile(t, "php", "php/sample.php")
 
 	// Symbols
-	shouldContain(t, out, "- function greet")
-	shouldContain(t, out, "- class Person")
-	shouldContain(t, out, "- method speak")
-	shouldContain(t, out, "- interface IThing")
+	assert.Contains(t, out, "- function greet")
+	assert.Contains(t, out, "- class Person")
+	assert.Contains(t, out, "- method speak")
+	assert.Contains(t, out, "- interface IThing")
 
 	// Params: typed, by-ref, variadic
-	shouldContain(t, out, "greet(")
-	shouldContain(t, out, "name: string")
-	shouldContain(t, out, "&$ref")
-	shouldContain(t, out, "...$rest")
+	assert.Contains(t, out, "greet(")
+	assert.Contains(t, out, "name: string")
+	assert.Contains(t, out, "&$ref")
+	assert.Contains(t, out, "...$rest")
 
 	// Docs (PHPDoc)
-	shouldContain(t, out, "Doc: Greet doc")
-	shouldContain(t, out, "Doc: speak doc")
+	assert.Contains(t, out, "Doc: Greet doc")
+	assert.Contains(t, out, "Doc: speak doc")
 }
 
 func TestRust_DocsAndParams(t *testing.T) {
@@ -221,19 +224,19 @@ func TestRust_DocsAndParams(t *testing.T) {
 	out := renderSingleFile(t, "rust", "rust/sample.rs")
 
 	// Symbols
-	shouldContain(t, out, "- struct Person")
-	shouldContain(t, out, "- function add")
-	shouldContain(t, out, "- trait Speak")
+	assert.Contains(t, out, "- struct Person")
+	assert.Contains(t, out, "- function add")
+	assert.Contains(t, out, "- trait Speak")
 
 	// Params (typed)
-	shouldContain(t, out, "add(")
-	shouldContain(t, out, "x: i32")
-	shouldContain(t, out, "y: i32")
+	assert.Contains(t, out, "add(")
+	assert.Contains(t, out, "x: i32")
+	assert.Contains(t, out, "y: i32")
 
 	// Docs (///)
-	shouldContain(t, out, "Doc: Person doc")
-	shouldContain(t, out, "Doc: add doc")
-	shouldContain(t, out, "Doc: Speak trait")
+	assert.Contains(t, out, "Doc: Person doc")
+	assert.Contains(t, out, "Doc: add doc")
+	assert.Contains(t, out, "Doc: Speak trait")
 }
 
 func TestElixir_DocsAndParams(t *testing.T) {
@@ -241,21 +244,21 @@ func TestElixir_DocsAndParams(t *testing.T) {
 	out := renderSingleFile(t, "elixir", "elixir/sample.ex")
 
 	// Symbols
-	shouldContain(t, out, "- module Greeter")
-	shouldContain(t, out, "- function hello")
-	shouldContain(t, out, "- function private_thing")
-	shouldContain(t, out, "- macro debug")
+	assert.Contains(t, out, "- module Greeter")
+	assert.Contains(t, out, "- function hello")
+	assert.Contains(t, out, "- function private_thing")
+	assert.Contains(t, out, "- macro debug")
 
 	// Params (function head). Defaults parsed but not necessarily rendered.
-	shouldContain(t, out, "hello(")
-	shouldContain(t, out, "name")
-	shouldContain(t, out, "private_thing(")
-	shouldContain(t, out, "x")
-	shouldContain(t, out, "debug(")
-	shouldContain(t, out, "expr")
+	assert.Contains(t, out, "hello(")
+	assert.Contains(t, out, "name")
+	assert.Contains(t, out, "private_thing(")
+	assert.Contains(t, out, "x")
+	assert.Contains(t, out, "debug(")
+	assert.Contains(t, out, "expr")
 
 	// Docs (@moduledoc and @doc)
-	shouldContain(t, out, "Doc: Greeter module docs.")
-	shouldContain(t, out, "Doc: Says hello.")
-	shouldContain(t, out, "Doc: Debug macro.")
+	assert.Contains(t, out, "Doc: Greeter module docs.")
+	assert.Contains(t, out, "Doc: Says hello.")
+	assert.Contains(t, out, "Doc: Debug macro.")
 }
