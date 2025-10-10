@@ -1,15 +1,11 @@
-namespace Example {
-    public struct Point {
-        public int X;
-        public int Y;
-    }
+public interface IRepo {}
 
-    public interface IRepo {
-        void Save(object o);
-    }
+public struct Point { public int X; public int Y; }
 
-    public class Person {
-        public void Speak() { System.Console.WriteLine("hi"); }
+public class Person {
+    /// Speak doc
+    public void Speak(this string name, ref int count, out string value, params string[] rest) {
+        count = 0;
+        value = name;
     }
 }
-

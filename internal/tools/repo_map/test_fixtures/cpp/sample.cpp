@@ -1,16 +1,10 @@
-#include <string>
+class Box {};
 
 struct Data {
-    int id;
-    std::string name;
-};
-
-class Box {
-public:
-    void open() {}
+  int x;
+  int y;
 };
 
 int add(int a, int b) {
-    return a + b;
+  return a + b;
 }
-

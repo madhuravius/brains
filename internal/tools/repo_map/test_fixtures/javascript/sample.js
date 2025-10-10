@@ -1,12 +1,11 @@
-const VERSION = "1.0";
-
+/** Say hi */
 function greet(name) {
-  return `Hello ${name}`;
+  return "Hello " + name;
 }
 
 class Person {
-  speak() {
-    return "Hi!";
+  /** Speak something */
+  speak(msg) {
+      return msg;
   }
 }
-

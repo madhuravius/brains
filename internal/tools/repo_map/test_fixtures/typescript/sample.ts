@@ -1,13 +1,10 @@
+/** Do a thing */
+export function doThing(x: number, y?: string, ...rest: any[]): void {}
+
+/** A class */
+export class MyClass {}
+
+/** An interface */
 export interface IThing {
-  id: number;
-  name: string;
+  id: string;
 }
-
-export class MyClass {
-  do() { return "done"; }
-}
-
-export function doThing(x: number): number {
-  return x * 2;
-}
-

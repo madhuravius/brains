@@ -1,17 +1,12 @@
 <?php
-const VERSION = "1.0";
+/** Greet doc */
+function greet(string $name, &$ref, ...$rest) {}
 
-function greet($name) {
-    return "Hello $name";
-}
-
+/** Person doc */
 class Person {
-    function speak() {
-        return "hi";
-    }
+    /** speak doc */
+    public function speak($msg) {}
 }
 
-interface IThing {
-    public function doSomething();
-}
+interface IThing {}
 

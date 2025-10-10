@@ -1,15 +1,7 @@
-CONSTANT = 1
-
+# Person doc
 class Person
-  def initialize(name)
-    @name = name
-  end
-
-  def speak
-    "hello"
-  end
+  # speak doc
+  def speak(name, *rest, **kw, &blk); end
 end
 
-module MyMod
-end
-
+module MyMod; end

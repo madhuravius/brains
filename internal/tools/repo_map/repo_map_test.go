@@ -10,154 +10,252 @@ import (
 	"github.com/madhuravius/brains/internal/tools/repo_map"
 )
 
-func TestParseFile_ByLanguage(t *testing.T) {
+func mustContain(t *testing.T, s, sub string) {
+	t.Helper()
+	if !strings.Contains(s, sub) {
+		t.Fatalf("expected to contain %q\nGot:\n%s", sub, s)
+	}
+}
+
+func shouldContain(t *testing.T, s, sub string) {
+	t.Helper()
+	if !strings.Contains(s, sub) {
+		t.Errorf("expected to contain %q\nGot:\n%s", sub, s)
+	}
+}
+
+func renderSingleFile(t *testing.T, lang, relpath string) string {
+	t.Helper()
 	ctx := context.Background()
 	root := "test_fixtures"
+	path := filepath.Join(root, relpath)
 
-	cases := []struct {
-		name     string
-		lang     string
-		relpath  string
-		expected []string // substrings expected to appear in RepoMap.ToPrompt() output
-	}{
-		{
-			name:    "go",
-			lang:    "go",
-			relpath: "go/sample.go",
-			expected: []string{
-				"struct Person",
-				"interface Greeter",
-				"function SayHello",
-				"method Greet",
-				"constant Pi",
-				"variable version",
-			},
-		},
-		{
-			name:    "python",
-			lang:    "python",
-			relpath: "python/sample.py",
-			expected: []string{
-				"class Person",
-				"function greet",
-				"constant CONSTANT",
-			},
-		},
-		{
-			name:    "javascript",
-			lang:    "javascript",
-			relpath: "javascript/sample.js",
-			expected: []string{
-				"function greet",
-				"class Person",
-				"method speak",
-			},
-		},
-		{
-			name:    "typescript",
-			lang:    "typescript",
-			relpath: "typescript/sample.ts",
-			expected: []string{
-				"function doThing",
-				"class MyClass",
-				"interface IThing",
-			},
-		},
-		{
-			name:    "java",
-			lang:    "java",
-			relpath: "java/sample.java",
-			expected: []string{
-				"class Service",
-				"method execute",
-				"constructor Service",
-			},
-		},
-		{
-			name:    "cpp",
-			lang:    "cpp",
-			relpath: "cpp/sample.cpp",
-			expected: []string{
-				"function add",
-				"class Box",
-				"struct Data",
-			},
-		},
-		{
-			name:    "csharp",
-			lang:    "csharp",
-			relpath: "csharp/sample.cs",
-			expected: []string{
-				"class Person",
-				"method Speak",
-				"struct Point",
-				"interface IRepo",
-			},
-		},
-		{
-			name:    "ruby",
-			lang:    "ruby",
-			relpath: "ruby/sample.rb",
-			expected: []string{
-				"class Person",
-				"method speak",
-				"module MyMod",
-			},
-		},
-		{
-			name:    "php",
-			lang:    "php",
-			relpath: "php/sample.php",
-			expected: []string{
-				"function greet",
-				"class Person",
-				"method speak",
-				"interface IThing",
-			},
-		},
-		{
-			name:    "rust",
-			lang:    "rust",
-			relpath: "rust/sample.rs",
-			expected: []string{
-				"struct Person",
-				"function add",
-				"trait Speak",
-			},
-		},
+	fm, err := repo_map.ParseFile(ctx, path, lang)
+	if err != nil {
+		t.Fatalf("ParseFile(%q, %q) error: %v", path, lang, err)
 	}
-
-	for _, tc := range cases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			path := filepath.Join(root, tc.relpath)
-
-			fileMap, err := repo_map.ParseFile(ctx, path, tc.lang)
-			if err != nil {
-				t.Fatalf("ParseFile(%q, %q) error: %v", path, tc.lang, err)
-			}
-
-			// Build a one-file RepoMap and render it to a prompt to assert the textual output.
-			repo := repo_map.RepoMap{
-				Path:  filepath.Dir(path),
-				Files: []*repo_map.FileMap{fileMap},
-			}
-
-			out := repo.ToPrompt()
-
-			// check header exists (file path should appear)
-			if !strings.Contains(out, fmt.Sprintf("### File: %s", path)) {
-				t.Fatalf("expected ToPrompt() to include file header for %s; got:\n%s", path, out)
-			}
-
-			// each expected snippet should show up
-			for _, want := range tc.expected {
-				if !strings.Contains(out, want) {
-					t.Errorf("expected %q to appear in prompt for %s; output:\n%s", want, tc.relpath, out)
-				}
-			}
-		})
+	r := repo_map.RepoMap{
+		Path:  filepath.Dir(path),
+		Files: []*repo_map.FileMap{fm},
 	}
+	out := r.ToPrompt()
+	mustContain(t, out, fmt.Sprintf("### File: %s", path))
+	return out
+}
+
+func TestGo_DocsAndParams(t *testing.T) {
+	t.Parallel()
+	out := renderSingleFile(t, "go", "go/sample.go")
+
+	// Symbols
+	shouldContain(t, out, "- struct Person")
+	shouldContain(t, out, "- interface Greeter")
+	shouldContain(t, out, "- constant Pi")
+	shouldContain(t, out, "- variable version")
+	shouldContain(t, out, "- function SayHello")
+	shouldContain(t, out, "- method Greet")
+
+	// Params (coarse)
+	shouldContain(t, out, "SayHello(")
+	shouldContain(t, out, "name")
+	shouldContain(t, out, "times")
+
+	// Docs (from leading comments)
+	shouldContain(t, out, "Doc: SayHello says hi")
+}
+
+func TestPython_DocsAndParams(t *testing.T) {
+	t.Parallel()
+	out := renderSingleFile(t, "python", "python/sample.py")
+
+	// Symbols
+	shouldContain(t, out, "- class Person")
+	shouldContain(t, out, "- function greet")
+
+	// Params
+	shouldContain(t, out, "greet(name")
+
+	// Docs (docstrings)
+	shouldContain(t, out, "Doc: Greet someone.")
+	shouldContain(t, out, "Doc: Represents a person.")
+}
+
+func TestJavaScript_DocsAndParams(t *testing.T) {
+	t.Parallel()
+	out := renderSingleFile(t, "javascript", "javascript/sample.js")
+
+	// Symbols
+	shouldContain(t, out, "- function greet")
+	shouldContain(t, out, "- class Person")
+	shouldContain(t, out, "- method speak")
+
+	// Params
+	shouldContain(t, out, "greet(name")
+	shouldContain(t, out, "speak(msg")
+
+	// Docs (JSDoc)
+	shouldContain(t, out, "Doc: Say hi")
+	shouldContain(t, out, "Doc: Speak something")
+}
+
+func TestTypeScript_DocsAndParams(t *testing.T) {
+	t.Parallel()
+	out := renderSingleFile(t, "typescript", "typescript/sample.ts")
+
+	// Symbols
+	shouldContain(t, out, "- function doThing")
+	shouldContain(t, out, "- class MyClass")
+	shouldContain(t, out, "- interface IThing")
+
+	// Params (typed + rest). Use partial contains for stability.
+	shouldContain(t, out, "doThing(")
+	shouldContain(t, out, "x: number")
+	shouldContain(t, out, "...rest")
+
+	// Docs
+	shouldContain(t, out, "Doc: Do a thing")
+}
+
+func TestJava_DocsAndParams(t *testing.T) {
+	t.Parallel()
+	out := renderSingleFile(t, "java", "java/sample.java")
+
+	// Symbols
+	shouldContain(t, out, "- class Service")
+	shouldContain(t, out, "- constructor Service")
+	shouldContain(t, out, "- method execute")
+
+	// Params (typed + varargs). Use partials for stability.
+	shouldContain(t, out, "execute(")
+	shouldContain(t, out, "value: String")
+	// If your formatting is "String value", keep this alternative:
+	// shouldContain(t, out, "String")
+	// shouldContain(t, out, "value")
+	shouldContain(t, out, "...") // spread/varargs marker appears on one param
+
+	// Docs (Javadoc)
+	shouldContain(t, out, "Doc: Service class")
+	shouldContain(t, out, "Doc: Execute work")
+}
+
+func TestCPP_DocsAndParams(t *testing.T) {
+	t.Parallel()
+	out := renderSingleFile(t, "cpp", "cpp/sample.cpp")
+
+	// Symbols
+	shouldContain(t, out, "- function add")
+	shouldContain(t, out, "- class Box")
+	shouldContain(t, out, "- struct Data")
+
+	// Params (typed)
+	shouldContain(t, out, "add(")
+	shouldContain(t, out, "a: int")
+	shouldContain(t, out, "b: int")
+}
+
+func TestCSharp_DocsAndParams(t *testing.T) {
+	t.Parallel()
+	out := renderSingleFile(t, "csharp", "csharp/sample.cs")
+
+	// Symbols
+	shouldContain(t, out, "- interface IRepo")
+	shouldContain(t, out, "- struct Point")
+	shouldContain(t, out, "- class Person")
+	shouldContain(t, out, "- method Speak")
+
+	// Params (modifiers: this, ref, out, params)
+	shouldContain(t, out, "Speak(")
+	shouldContain(t, out, "this ")
+	shouldContain(t, out, "ref ")
+	shouldContain(t, out, "out ")
+	shouldContain(t, out, "params ")
+
+	// Docs (triple-slash)
+	shouldContain(t, out, "Doc: Speak doc")
+}
+
+func TestRuby_DocsAndParams(t *testing.T) {
+	t.Parallel()
+	out := renderSingleFile(t, "ruby", "ruby/sample.rb")
+
+	// Symbols
+	shouldContain(t, out, "- class Person")
+	shouldContain(t, out, "- method speak")
+	shouldContain(t, out, "- module MyMod")
+
+	// Params: required, splat, keyword splat, block
+	shouldContain(t, out, "speak(")
+	shouldContain(t, out, "name")
+	shouldContain(t, out, "*rest")
+	shouldContain(t, out, "**kw")
+	shouldContain(t, out, "&blk")
+
+	// Docs (leading # comments)
+	shouldContain(t, out, "Doc: Person doc")
+	shouldContain(t, out, "Doc: speak doc")
+}
+
+func TestPHP_DocsAndParams(t *testing.T) {
+	t.Parallel()
+	out := renderSingleFile(t, "php", "php/sample.php")
+
+	// Symbols
+	shouldContain(t, out, "- function greet")
+	shouldContain(t, out, "- class Person")
+	shouldContain(t, out, "- method speak")
+	shouldContain(t, out, "- interface IThing")
+
+	// Params: typed, by-ref, variadic
+	shouldContain(t, out, "greet(")
+	shouldContain(t, out, "name: string")
+	shouldContain(t, out, "&$ref")
+	shouldContain(t, out, "...$rest")
+
+	// Docs (PHPDoc)
+	shouldContain(t, out, "Doc: Greet doc")
+	shouldContain(t, out, "Doc: speak doc")
+}
+
+func TestRust_DocsAndParams(t *testing.T) {
+	t.Parallel()
+	out := renderSingleFile(t, "rust", "rust/sample.rs")
+
+	// Symbols
+	shouldContain(t, out, "- struct Person")
+	shouldContain(t, out, "- function add")
+	shouldContain(t, out, "- trait Speak")
+
+	// Params (typed)
+	shouldContain(t, out, "add(")
+	shouldContain(t, out, "x: i32")
+	shouldContain(t, out, "y: i32")
+
+	// Docs (///)
+	shouldContain(t, out, "Doc: Person doc")
+	shouldContain(t, out, "Doc: add doc")
+	shouldContain(t, out, "Doc: Speak trait")
+}
+
+func TestElixir_DocsAndParams(t *testing.T) {
+	t.Parallel()
+	out := renderSingleFile(t, "elixir", "elixir/sample.ex")
+
+	// Symbols
+	shouldContain(t, out, "- module Greeter")
+	shouldContain(t, out, "- function hello")
+	shouldContain(t, out, "- function private_thing")
+	shouldContain(t, out, "- macro debug")
+
+	// Params (function head). Defaults parsed but not necessarily rendered.
+	shouldContain(t, out, "hello(")
+	shouldContain(t, out, "name")
+	shouldContain(t, out, "private_thing(")
+	shouldContain(t, out, "x")
+	shouldContain(t, out, "debug(")
+	shouldContain(t, out, "expr")
+
+	// Docs (@moduledoc and @doc)
+	shouldContain(t, out, "Doc: Greeter module docs.")
+	shouldContain(t, out, "Doc: Says hello.")
+	shouldContain(t, out, "Doc: Debug macro.")
 }

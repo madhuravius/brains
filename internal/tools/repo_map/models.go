@@ -12,12 +12,19 @@ type FileMap struct {
 	Symbols  []*SymbolMap `json:"symbols"`
 }
 
+type Param struct {
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Default string `json:"default"`
+}
+
 type SymbolMap struct {
 	Type     string       `json:"type"` // e.g., "function", "class", "method", "variable"
 	Name     string       `json:"name"`
 	Start    int          `json:"start"`
 	End      int          `json:"end"`
 	Doc      string       `json:"doc,omitempty"`
+	Params   []Param      `json:"params"`
 	Children []*SymbolMap `json:"children,omitempty"`
 }
 
@@ -98,4 +105,6 @@ var LanguageSymbolRules = map[string][]SymbolRule{
 		{"enum_item", "name", "enum"},
 		{"trait_item", "name", "trait"},
 	},
+
+	"elixir": {}, //  custom handler in ExtractSymbols since Elixir uses generic call nodes.
 }

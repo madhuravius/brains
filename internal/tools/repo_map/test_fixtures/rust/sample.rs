@@ -1,20 +1,15 @@
-const VERSION: &str = "1.0";
-
+/// Person doc
 struct Person {
     name: String,
 }
 
-impl Person {
-    fn greet(&self) -> String {
-        format!("Hello, {}", self.name)
-    }
+/// add doc
+fn add(x: i32, y: i32) -> i32 {
+    x + y
 }
 
-fn add(a: i32, b: i32) -> i32 {
-    a + b
-}
-
+/// Speak trait
 trait Speak {
-    fn speak(&self);
+    fn say(&self, msg: &str);
 }
 

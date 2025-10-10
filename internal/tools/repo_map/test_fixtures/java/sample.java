@@ -1,14 +1,7 @@
-package example;
-
 public class Service {
-    private String name;
+    /** Service class */
+    public Service() {}
 
-    public Service(String name) {
-        this.name = name;
-    }
-
-    public void execute() {
-        System.out.println("executing");
-    }
+    /** Execute work */
+    public void execute(String value, int... items) {}
 }
-
