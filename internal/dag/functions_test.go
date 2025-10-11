@@ -1,6 +1,7 @@
 package dag_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -161,4 +162,75 @@ func TestDAGVisualizeSimple(t *testing.T) {
 
 	d.Connect(v1.Name, v2.Name)
 	d.Visualize()
+}
+
+func TestDAGRun_WithRetry_SucceedsAfterFailures(t *testing.T) {
+	d, err := dag.NewDAG[int, int]("root")
+	assert.Nil(t, err)
+
+	callCount := 0
+	v := &dag.Vertex[int, int]{
+		Name:        "retry-node",
+		EnableRetry: true,
+		MaxRetries:  3,
+		Run: func(inputs map[string]int) (int, error) {
+			callCount++
+			if callCount < 3 {
+				return 0, fmt.Errorf("temporary error %d", callCount)
+			}
+			return 42, nil
+		},
+	}
+
+	_ = d.AddVertex(v)
+	d.Connect("root", v.Name)
+
+	results, err := d.Run()
+	assert.NoError(t, err)
+	assert.Equal(t, 42, results["retry-node"])
+	assert.Equal(t, 3, callCount, "should retry until third attempt succeeds")
+}
+
+func TestDAGRun_WithRetry_UsesDefaultMaxRetries(t *testing.T) {
+	d, err := dag.NewDAG[int, int]("root")
+	assert.Nil(t, err)
+
+	callCount := 0
+	v := &dag.Vertex[int, int]{
+		Name:        "default-retry",
+		EnableRetry: true, // MaxRetries not set → use DefaultMaxRetries
+		Run: func(inputs map[string]int) (int, error) {
+			callCount++
+			return 0, fmt.Errorf("always fails")
+		},
+	}
+
+	_ = d.AddVertex(v)
+	d.Connect("root", v.Name)
+
+	_, err = d.Run()
+	assert.Error(t, err)
+	assert.Equal(t, dag.DefaultMaxRetries, callCount, "should use default retry count")
+}
+
+func TestDAGRun_WithoutRetry_FailsImmediately(t *testing.T) {
+	d, err := dag.NewDAG[int, int]("root")
+	assert.Nil(t, err)
+
+	callCount := 0
+	v := &dag.Vertex[int, int]{
+		Name:        "no-retry",
+		EnableRetry: false,
+		Run: func(inputs map[string]int) (int, error) {
+			callCount++
+			return 0, fmt.Errorf("fails once")
+		},
+	}
+
+	_ = d.AddVertex(v)
+	d.Connect("root", v.Name)
+
+	_, err = d.Run()
+	assert.Error(t, err)
+	assert.Equal(t, 1, callCount, "should not retry when EnableRetry=false")
 }

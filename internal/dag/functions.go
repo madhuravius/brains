@@ -60,27 +60,61 @@ func (d *DAG[T, D]) Run() (map[string]T, error) {
 
 	for _, name := range order {
 		v, _ := d.graph.Vertex(name)
-
-		inputs := map[string]T{}
-		edges, _ := d.graph.Edges()
-		for _, e := range edges {
-			if e.Target == name {
-				if val, ok := results[e.Source]; ok {
-					inputs[e.Source] = val
-				}
-			}
+		if v.Run == nil {
+			continue
 		}
 
-		if v.Run != nil {
-			result, err := v.Run(inputs)
-			if err != nil {
-				return nil, fmt.Errorf("error running vertex %s: %w", name, err)
-			}
-			results[name] = result
+		inputs := d.collectInputs(name, results)
+
+		result, err := runWithRetry(v, inputs)
+		if err != nil {
+			return nil, fmt.Errorf("vertex %s failed: %w", name, err)
 		}
+
+		results[name] = result
 	}
 
 	return results, nil
+}
+
+// collectInputs builds the input map for a vertex from prior results.
+func (d *DAG[T, D]) collectInputs(target string, results map[string]T) map[string]T {
+	inputs := make(map[string]T)
+	edges, _ := d.graph.Edges()
+	for _, e := range edges {
+		if e.Target == target {
+			if val, ok := results[e.Source]; ok {
+				inputs[e.Source] = val
+			}
+		}
+	}
+	return inputs
+}
+
+// runWithRetry executes a vertex’s Run function with retry logic.
+func runWithRetry[T any, D any](v *Vertex[T, D], inputs map[string]T) (T, error) {
+	retries := 1
+	if v.EnableRetry {
+		retries = v.MaxRetries
+		if retries <= 0 {
+			retries = DefaultMaxRetries
+		}
+	}
+
+	var zero T
+	for attempt := 1; attempt <= retries; attempt++ {
+		result, err := v.Run(inputs)
+		if err == nil {
+			return result, nil
+		}
+
+		if attempt < retries {
+			fmt.Printf("Retrying %s (%d/%d): %v\n", v.Name, attempt, retries, err)
+		} else {
+			return zero, err
+		}
+	}
+	return zero, nil
 }
 
 func (d *DAG[T, D]) Visualize() {

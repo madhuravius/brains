@@ -12,6 +12,7 @@ import (
 	"github.com/madhuravius/brains/internal/core"
 )
 
+// CLIConfig holds the top‑level command‑line options.
 type CLIConfig struct {
 	awsConfig    aws.AWSImpl
 	brainsConfig config.BrainsConfigImpl
@@ -20,6 +21,7 @@ type CLIConfig struct {
 	glob         string
 }
 
+// generateCommonFlags registers flags that are shared by all sub‑commands.
 func generateCommonFlags(cliConfig *CLIConfig, cfg *config.BrainsConfig) []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
@@ -39,6 +41,7 @@ func generateCommonFlags(cliConfig *CLIConfig, cfg *config.BrainsConfig) []cli.F
 	}
 }
 
+// validateAWSCredentials checks that the supplied AWS credentials are valid.
 func (c *CLIConfig) validateAWSCredentials() {
 	if !c.awsConfig.SetAndValidateCredentials() {
 		pterm.Error.Println("unable to validate credentials")
@@ -46,6 +49,7 @@ func (c *CLIConfig) validateAWSCredentials() {
 	}
 }
 
+// main parses flags, validates configuration and dispatches sub‑commands.
 func main() {
 	brainsConfig, err := config.LoadConfig()
 	if err != nil {

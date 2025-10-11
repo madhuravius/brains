@@ -29,6 +29,7 @@ func generateResearchRun[T Researchable](
 			}
 			t.SetResearchData(url, data)
 		}
+		pterm.Success.Println("research - #1 - loaded browser-based content if applicable")
 
 		for _, fileRequested := range researchActions.FilesRequested {
 			data, err := coreConfig.toolsConfig.fsToolConfig.GetFileContents(fileRequested)
@@ -36,8 +37,10 @@ func generateResearchRun[T Researchable](
 				pterm.Warning.Printf("failed to load file contents from file requested (%s): %v\n", fileRequested, err)
 				continue
 			}
+			pterm.Info.Printfln("research - #2 - loaded file: %s", fileRequested)
 			t.SetFileMapData(fileRequested, data)
 		}
+		pterm.Success.Println("research - #2 - loaded requested files")
 
 		return "", nil
 	}
@@ -56,6 +59,7 @@ func generateRepoMap[T RepoMappable](
 
 		t.SetRepoMapContext(repoMap.ToPrompt())
 
+		pterm.Success.Printfln("repoMap successfully constructed: %d files", len(repoMap.Files))
 		return "", nil
 	}
 }

@@ -32,6 +32,9 @@ func (c *CodeData) generateDetermineCodeChangesFunction(coreConfig *CoreConfig, 
 	for url, data := range c.ResearchData {
 		additionalContext += "------ scraped content from: " + url + "\n\n\n" + data + "\n\n\n" + "------------"
 	}
+	for filePath, fileContents := range c.FileMapData {
+		additionalContext += "----- requested file content: " + filePath + "\n\n\n" + fileContents + "\n\n\n" + "------------"
+	}
 	return func(inputs map[string]string) (string, error) {
 		c.CodeModelResponse = coreConfig.DetermineCodeChanges(
 			additionalContext+"\n\n\nwere visited above with content if available, you can now return to answering the prompt.\n\n\n"+req.Prompt,
@@ -79,16 +82,18 @@ func (c *CoreConfig) CodeFlow(ctx context.Context, llmRequest *LLMRequest) error
 	_ = codeDAG.AddVertex(researchVertex)
 
 	determineCodeChangesVertex := &dag.Vertex[string, *CodeData]{
-		Name: "determine_code_changes",
-		DAG:  codeDAG,
-		Run:  codeData.generateDetermineCodeChangesFunction(c, llmRequest),
+		Name:        "determine_code_changes",
+		DAG:         codeDAG,
+		Run:         codeData.generateDetermineCodeChangesFunction(c, llmRequest),
+		EnableRetry: true,
 	}
 	_ = codeDAG.AddVertex(determineCodeChangesVertex)
 
 	executeCodeEditsVertex := &dag.Vertex[string, *CodeData]{
-		Name: "execute_code_edits",
-		DAG:  codeDAG,
-		Run:  codeData.generateExecuteCodeEditsFunction(c),
+		Name:        "execute_code_edits",
+		DAG:         codeDAG,
+		Run:         codeData.generateExecuteCodeEditsFunction(c),
+		EnableRetry: true,
 	}
 	_ = codeDAG.AddVertex(executeCodeEditsVertex)
 

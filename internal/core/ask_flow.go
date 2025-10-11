@@ -68,16 +68,18 @@ func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) error 
 	_ = askDAG.AddVertex(repoMapVertex)
 
 	researchVertex := &dag.Vertex[string, *AskData]{
-		Name: "research",
-		DAG:  askDAG,
-		Run:  generateResearchRun(c, ctx, llmRequest, askData),
+		Name:        "research",
+		DAG:         askDAG,
+		Run:         generateResearchRun(c, ctx, llmRequest, askData),
+		EnableRetry: true,
 	}
 	_ = askDAG.AddVertex(researchVertex)
 
 	askVertex := &dag.Vertex[string, *AskData]{
-		Name: "ask",
-		DAG:  askDAG,
-		Run:  askData.generateAskFunction(c, llmRequest),
+		Name:        "ask",
+		DAG:         askDAG,
+		Run:         askData.generateAskFunction(c, llmRequest),
+		EnableRetry: true,
 	}
 	_ = askDAG.AddVertex(askVertex)
 
