@@ -1,13 +1,11 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 
 	"github.com/madhuravius/brains/internal/aws"
 	"github.com/madhuravius/brains/internal/config"
 
-	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/pterm/pterm"
 )
 
@@ -17,20 +15,15 @@ func main() {
 		pterm.Fatal.Printf("load config: %v", err)
 	}
 
-	awsCfg := aws.NewAWSConfig(cfg.AWSRegion)
+	awsCfg := aws.NewAWSConfig(cfg.GetConfig().AWSRegion)
 	if !awsCfg.SetAndValidateCredentials() {
 		pterm.Fatal.Printf("invalid AWS credentials")
 	}
 
-	caller, err := sts.NewFromConfig(awsCfg.GetConfig()).GetCallerIdentity(context.Background(),
-		&sts.GetCallerIdentityInput{})
-	if err != nil {
-		pterm.Fatal.Printfln("sts identity: %v", err)
-	}
-	pterm.Info.Printf("Account: %s\nARN: %s\nRegion: %s\nModel: %s\n",
-		*caller.Account, *caller.Arn, cfg.AWSRegion, cfg.Model)
+	pterm.Info.Printf("Region: %s\nModel: %s\n",
+		cfg.GetConfig().AWSRegion, cfg.GetConfig().Model)
 
-	data := awsCfg.DescribeModel(cfg.Model)
+	data := awsCfg.DescribeModel(cfg.GetConfig().Model)
 	if err != nil {
 		pterm.Fatal.Printfln("DescribeModel: %v", err)
 	}

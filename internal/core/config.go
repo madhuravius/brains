@@ -10,7 +10,7 @@ import (
 	"github.com/madhuravius/brains/internal/tools/file_system"
 )
 
-func NewCoreConfig(awsConfig *aws.AWSConfig) *CoreConfig {
+func NewCoreConfig(awsConfig aws.AWSImpl) CoreImpl {
 	fsToolConfig, err := file_system.NewFileSystemConfig()
 	if err != nil {
 		pterm.Error.Printf("Failed to load fs tool configuration: %v\n", err)
@@ -20,9 +20,9 @@ func NewCoreConfig(awsConfig *aws.AWSConfig) *CoreConfig {
 		toolsConfig: &toolsConfig{
 			fsToolConfig: fsToolConfig,
 		},
-		awsConfig: awsConfig,
+		awsImpl: awsConfig,
 	}
 }
-func (c *CoreConfig) GetAWSConfig() *aws.AWSConfig          { return c.awsConfig }
-func (c *CoreConfig) SetAWSConfig(a *aws.AWSConfig)         { c.awsConfig = a }
+func (c *CoreConfig) GetAWSConfig() aws.AWSImpl             { return c.awsImpl }
+func (c *CoreConfig) SetAWSConfig(a aws.AWSImpl)            { c.awsImpl = a }
 func (c *CoreConfig) SetLogger(l brainsConfig.SimpleLogger) { c.logger = l }

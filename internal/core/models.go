@@ -1,10 +1,20 @@
 package core
 
 import (
+	"context"
+
 	awsConfig "github.com/madhuravius/brains/internal/aws"
 	brainsConfig "github.com/madhuravius/brains/internal/config"
 	"github.com/madhuravius/brains/internal/tools/file_system"
 )
+
+type CoreImpl interface {
+	AskFlow(ctx context.Context, llmRequest *LLMRequest) error
+	CodeFlow(ctx context.Context, llmRequest *LLMRequest) error
+	ValidateBedrockConfiguration(modelID string) bool
+
+	SetLogger(l brainsConfig.SimpleLogger)
+}
 
 type toolsConfig struct {
 	fsToolConfig *file_system.FileSystemConfig
@@ -12,7 +22,7 @@ type toolsConfig struct {
 
 type CoreConfig struct {
 	toolsConfig *toolsConfig
-	awsConfig   *awsConfig.AWSConfig
+	awsImpl     awsConfig.AWSImpl
 	logger      brainsConfig.SimpleLogger
 }
 
@@ -23,16 +33,25 @@ type LLMRequest struct {
 	Prompt              string
 }
 type Researchable interface {
+	SetFileMapData(filePath, filePathData string)
 	SetResearchData(url, data string)
 }
+type RepoMappable interface {
+	SetRepoMapContext(repoMap string)
+}
+type FileMapData map[string]string
 type ResearchData map[string]string
 type AskData struct {
 	ResearchData
+	FileMapData
+	RepoMapContext string
 }
 type askDataDAGFunction func(inputs map[string]string) (string, error)
 
 type CodeData struct {
 	ResearchData
+	FileMapData
+	RepoMapContext    string
 	CodeModelResponse *CodeModelResponse
 }
 type codeDataDAGFunction func(inputs map[string]string) (string, error)
@@ -74,6 +93,7 @@ type CodeModelResponseWithParameters struct {
 
 type ResearchActions struct {
 	UrlsRecommended []string `json:"urls_recommended"`
+	FilesRequested  []string `json:"files_requested"`
 }
 
 type ResearchModelResponse struct {

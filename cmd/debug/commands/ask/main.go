@@ -15,25 +15,25 @@ func main() {
 	const (
 		glob    = "cmd/debug/commands/ask/main.go"
 		modelID = "openai.gpt-oss-120b-1:0"
-		prompt  = "as per best practices from https://google.github.io/styleguide/go/best-practices.html and suggest improvements to this codebase"
+		prompt  = "as per best practices from https://google.github.io/styleguide/go/best-practices.html and suggest improvements to this file"
 	)
 
 	ctx := context.Background()
 	brainsConfig, err := config.LoadConfig()
 	if err != nil {
-		pterm.Error.Printf("Failed to load configuration: %v\n", err)
+		pterm.Error.Printf("failed to load configuration: %v\n", err)
 		os.Exit(1)
 	}
 
-	awsConfig := aws.NewAWSConfig(brainsConfig.AWSRegion)
-	awsConfig.SetLogger(brainsConfig)
+	awsConfig := aws.NewAWSConfig(brainsConfig.GetConfig().AWSRegion)
+	awsConfig.SetLogger(brainsConfig.GetConfig())
 	if !awsConfig.SetAndValidateCredentials() {
 		pterm.Error.Println("unable to validate credentials")
 		os.Exit(1)
 	}
 
 	coreConfig := core.NewCoreConfig(awsConfig)
-	coreConfig.SetLogger(brainsConfig)
+	coreConfig.SetLogger(brainsConfig.GetConfig())
 
 	personaInstructions := brainsConfig.GetPersonaInstructions("dev")
 
@@ -44,5 +44,8 @@ func main() {
 		Prompt:              prompt,
 	}
 
-	coreConfig.AskFlow(ctx, req)
+	if err := coreConfig.AskFlow(ctx, req); err != nil {
+		pterm.Error.Printf("failed to run ask flow: %v\n", err)
+		os.Exit(1)
+	}
 }

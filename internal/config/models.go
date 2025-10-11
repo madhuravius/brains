@@ -25,3 +25,8 @@ type BrainsConfig struct {
 	DefaultPersona string            `yaml:"default_persona"`
 	logger         logger            `yaml:"-"`
 }
+
+type BrainsConfigImpl interface {
+	GetConfig() *BrainsConfig
+	GetPersonaInstructions(persona string) string
+}

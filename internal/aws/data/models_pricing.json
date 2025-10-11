@@ -3,7 +3,7 @@
     "ModelName": "Claude",
     "ModelID": "anthropic.claude-v2:1:200k",
     "ProviderName": "Anthropic",
-    "InputCostPer1kTokens": 0.0008,
+    "InputCostPer1kTokens": 0.00025,
     "OutputCostPer1kTokens": 0
   },
   {

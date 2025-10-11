@@ -9,6 +9,7 @@ import (
 
 	"github.com/madhuravius/brains/internal/aws"
 	"github.com/madhuravius/brains/internal/tools/browser"
+	"github.com/madhuravius/brains/internal/tools/repo_map"
 )
 
 func generateResearchRun[T Researchable](
@@ -23,11 +24,38 @@ func generateResearchRun[T Researchable](
 		for _, url := range researchActions.UrlsRecommended {
 			data, err := browser.FetchWebContext(ctx, url)
 			if err != nil {
-				pterm.Error.Printf("Failed to load url: %v\n", err)
+				pterm.Error.Printf("failed to load url: %v\n", err)
 				return "", err
 			}
 			t.SetResearchData(url, data)
 		}
+
+		for _, fileRequested := range researchActions.FilesRequested {
+			data, err := coreConfig.toolsConfig.fsToolConfig.GetFileContents(fileRequested)
+			if err != nil {
+				pterm.Warning.Printf("failed to load file contents from file requested (%s): %v\n", fileRequested, err)
+				continue
+			}
+			t.SetFileMapData(fileRequested, data)
+		}
+
+		return "", nil
+	}
+}
+
+func generateRepoMap[T RepoMappable](
+	ctx context.Context,
+	t T,
+) askDataDAGFunction {
+	return func(inputs map[string]string) (string, error) {
+		repoMap, err := repo_map.BuildRepoMap(ctx, "./")
+		if err != nil {
+			pterm.Error.Printf("failed to load repo map: %v\n", err)
+			return "", err
+		}
+
+		t.SetRepoMapContext(repoMap.ToPrompt())
+
 		return "", nil
 	}
 }
@@ -77,7 +105,7 @@ func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool
 		},
 	}
 
-	respBody, err := c.awsConfig.CallAWSBedrock(ctx, modelID, req)
+	respBody, err := c.awsImpl.CallAWSBedrock(ctx, modelID, req)
 	if err != nil {
 		pterm.Error.Printf("invokeModel error: %v\n", err)
 		return false
@@ -89,10 +117,10 @@ func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool
 	}
 	for _, choice := range data.Choices {
 		c.logger.LogMessage("[RESPONSE] \n " + choice.Message.Content)
-		c.awsConfig.PrintBedrockMessage(choice.Message.Content)
+		c.awsImpl.PrintBedrockMessage(choice.Message.Content)
 	}
-	c.awsConfig.PrintCost(data.Usage, modelID)
-	c.awsConfig.PrintContext(data.Usage)
+	c.awsImpl.PrintCost(data.Usage, modelID)
+	c.awsImpl.PrintContext(data.Usage, modelID)
 	return true
 }
 
@@ -124,7 +152,7 @@ func (c *CoreConfig) Research(prompt, modelID, glob string) *ResearchActions {
 		},
 	}
 
-	respBody, err := c.awsConfig.CallAWSBedrockConverse(ctx, modelID, req, researcherToolConfig)
+	respBody, err := c.awsImpl.CallAWSBedrockConverse(ctx, modelID, req, researcherToolConfig)
 	if err != nil {
 		pterm.Error.Printf("converse error: %v\n", err)
 		return nil
@@ -211,7 +239,7 @@ func (c *CoreConfig) DetermineCodeChanges(prompt, personaInstructions, modelID, 
 		},
 	}
 
-	respBody, err := c.awsConfig.CallAWSBedrockConverse(ctx, modelID, req, coderToolConfig)
+	respBody, err := c.awsImpl.CallAWSBedrockConverse(ctx, modelID, req, coderToolConfig)
 	if err != nil {
 		pterm.Error.Printf("converse error: %v\n", err)
 		return nil
@@ -228,7 +256,7 @@ func (c *CoreConfig) DetermineCodeChanges(prompt, personaInstructions, modelID, 
 	}
 
 	c.logger.LogMessage("[RESPONSE] \n " + data.MarkdownSummary + "\n\n")
-	c.awsConfig.PrintBedrockMessage(data.MarkdownSummary)
+	c.awsImpl.PrintBedrockMessage(data.MarkdownSummary)
 	return data
 
 }
@@ -249,7 +277,7 @@ func (c *CoreConfig) ValidateBedrockConfiguration(modelID string) bool {
 		},
 	}
 	c.logger.LogMessage("[REQUEST] \n health‑check prompt")
-	respBody, err := c.awsConfig.CallAWSBedrock(ctx, modelID, simpleReq)
+	respBody, err := c.awsImpl.CallAWSBedrock(ctx, modelID, simpleReq)
 	if err != nil {
 		pterm.Error.Printf("InvokeModel error: %v\n", err)
 		return false
@@ -260,10 +288,10 @@ func (c *CoreConfig) ValidateBedrockConfiguration(modelID string) bool {
 		return false
 	}
 	for _, choice := range data.Choices {
-		c.awsConfig.PrintBedrockMessage(choice.Message.Content)
+		c.awsImpl.PrintBedrockMessage(choice.Message.Content)
 		c.logger.LogMessage("[RESPONSE] \n " + choice.Message.Content)
 	}
-	c.awsConfig.PrintCost(data.Usage, modelID)
-	c.awsConfig.PrintContext(data.Usage)
+	c.awsImpl.PrintCost(data.Usage, modelID)
+	c.awsImpl.PrintContext(data.Usage, modelID)
 	return true
 }

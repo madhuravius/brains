@@ -7,7 +7,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func LoadConfig() (*BrainsConfig, error) {
+func LoadConfig() (BrainsConfigImpl, error) {
 	paths := []string{}
 	if cwd, err := os.Getwd(); err == nil {
 		paths = append(paths, filepath.Join(cwd, ".brains.yml"))

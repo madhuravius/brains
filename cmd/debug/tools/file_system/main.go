@@ -1,9 +1,6 @@
 package main
 
 import (
-	"context"
-
-	"github.com/madhuravius/brains/internal/tools/browser"
 	"github.com/madhuravius/brains/internal/tools/file_system"
 
 	"github.com/pterm/pterm"
@@ -20,10 +17,4 @@ func main() {
 		pterm.Fatal.Printfln("file_system.SetContextFromGlob: %v", err)
 	}
 	pterm.Info.Printfln("data from glob gather: %s", fsData)
-
-	htmlData, err := browser.FetchWebContext(context.Background(), "https://github.com/madhuravius")
-	if err != nil {
-		pterm.Fatal.Printfln("browser.FetchWebContext: %v", err)
-	}
-	pterm.Info.Printfln("data from web gather: %s", htmlData)
 }

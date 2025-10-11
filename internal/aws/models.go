@@ -1,12 +1,34 @@
 package aws
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/bedrock/types"
+	bedrockruntimeTypes "github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 
 	brainsConfig "github.com/madhuravius/brains/internal/config"
 )
+
+type AWSImpl interface {
+	CallAWSBedrock(ctx context.Context, modelID string, req BedrockRequest) ([]byte, error)
+	CallAWSBedrockConverse(
+		ctx context.Context,
+		modelID string,
+		req BedrockRequest,
+		toolConfig *bedrockruntimeTypes.ToolConfiguration,
+	) ([]byte, error)
+	DescribeModel(model string) *types.FoundationModelSummary
+	GetConfig() aws.Config
+	PrintBedrockMessage(content string)
+	PrintContext(usage map[string]any, modelID string)
+	PrintCost(usage map[string]any, modelID string)
+	PrintPricing(modelID string) error
+	SetAndValidateCredentials() bool
+	SetLogger(l brainsConfig.SimpleLogger)
+	SetPricing(pricing []ModelPricing)
+}
 
 type AggregatedModelPricing struct {
 	ModelName             string
@@ -16,7 +38,7 @@ type AggregatedModelPricing struct {
 	OutputCostPer1kTokens float64
 }
 
-type modelPricing struct {
+type ModelPricing struct {
 	ModelID               string  `json:"ModelID"`
 	ModelName             string  `json:"ModelName"`
 	InputCostPer1kTokens  float64 `json:"InputCostPer1kTokens"`
@@ -29,7 +51,7 @@ type AWSConfig struct {
 	invoker BedrockInvoker
 	logger  brainsConfig.SimpleLogger
 
-	pricing []modelPricing
+	pricing []ModelPricing
 }
 
 type ResponseMessage struct {
