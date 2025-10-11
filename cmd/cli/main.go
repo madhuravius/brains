@@ -13,7 +13,7 @@ import (
 )
 
 type CLIConfig struct {
-	awsConfig    *aws.AWSConfig
+	awsConfig    aws.AWSImpl
 	brainsConfig config.BrainsConfigImpl
 	coreConfig   core.CoreImpl
 	persona      string
@@ -53,14 +53,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	awsConfig := aws.NewAWSConfig(brainsConfig.GetConfig().AWSRegion)
-	awsConfig.SetLogger(brainsConfig.GetConfig())
+	awsImpl := aws.NewAWSConfig(brainsConfig.GetConfig().AWSRegion)
+	awsImpl.SetLogger(brainsConfig.GetConfig())
 
-	coreConfig := core.NewCoreConfig(awsConfig)
+	coreConfig := core.NewCoreConfig(awsImpl)
 	coreConfig.SetLogger(brainsConfig.GetConfig())
 
 	cliConfig := &CLIConfig{
-		awsConfig:    awsConfig,
+		awsConfig:    awsImpl,
 		brainsConfig: brainsConfig,
 		coreConfig:   coreConfig,
 	}
@@ -138,7 +138,7 @@ func main() {
 				Name:  "pricing",
 				Usage: "print information on bedrock prices and selected model",
 				Action: func(c *cli.Context) error {
-					if err := awsConfig.PrintPricing(brainsConfig.GetConfig().Model); err != nil {
+					if err := awsImpl.PrintPricing(brainsConfig.GetConfig().Model); err != nil {
 						pterm.Error.Printfln("pricing failed: %v", err)
 						return err
 					}

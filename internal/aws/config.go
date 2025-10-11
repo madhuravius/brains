@@ -21,7 +21,7 @@ var newSTSClientFunc = func(cfg aws.Config, optFns ...func(*sts.Options)) STSCli
 	return sts.NewFromConfig(cfg, optFns...)
 }
 
-func NewAWSConfig(region string) *AWSConfig {
+func NewAWSConfig(region string) AWSImpl {
 	modelsPricing, err := getModelsPricing()
 	if err != nil {
 		return nil

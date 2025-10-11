@@ -22,7 +22,7 @@ type toolsConfig struct {
 
 type CoreConfig struct {
 	toolsConfig *toolsConfig
-	awsConfig   *awsConfig.AWSConfig
+	awsImpl     awsConfig.AWSImpl
 	logger      brainsConfig.SimpleLogger
 }
 
