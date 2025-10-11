@@ -16,6 +16,17 @@ func (c *CodeData) SetResearchData(url, data string) {
 	c.ResearchData[url] = data
 }
 
+func (c *CodeData) SetRepoMapContext(repoMap string) {
+	c.RepoMapContext = repoMap
+}
+
+func (c *CodeData) SetFileMapData(filePath, fileMapData string) {
+	if c.FileMapData == nil {
+		c.FileMapData = make(map[string]string)
+	}
+	c.FileMapData[filePath] = fileMapData
+}
+
 func (c *CodeData) generateDetermineCodeChangesFunction(coreConfig *CoreConfig, req *LLMRequest) codeDataDAGFunction {
 	additionalContext := ""
 	for url, data := range c.ResearchData {
@@ -53,6 +64,13 @@ func (c *CoreConfig) CodeFlow(ctx context.Context, llmRequest *LLMRequest) error
 		return err
 	}
 
+	repoMapVertex := &dag.Vertex[string, *CodeData]{
+		Name: "repoMap",
+		DAG:  codeDAG,
+		Run:  generateRepoMap(ctx, codeData),
+	}
+	_ = codeDAG.AddVertex(repoMapVertex)
+
 	researchVertex := &dag.Vertex[string, *CodeData]{
 		Name: "research",
 		DAG:  codeDAG,
@@ -74,6 +92,7 @@ func (c *CoreConfig) CodeFlow(ctx context.Context, llmRequest *LLMRequest) error
 	}
 	_ = codeDAG.AddVertex(executeCodeEditsVertex)
 
+	codeDAG.Connect(repoMapVertex.Name, researchVertex.Name)
 	codeDAG.Connect(researchVertex.Name, determineCodeChangesVertex.Name)
 	codeDAG.Connect(determineCodeChangesVertex.Name, executeCodeEditsVertex.Name)
 

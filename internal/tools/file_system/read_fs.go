@@ -102,6 +102,29 @@ func (f *FileSystemConfig) IsIgnored(path string) bool {
 	return false
 }
 
+func (f *FileSystemConfig) GetFileContents(path string) (string, error) {
+	if f.IsIgnored(path) {
+		return "", nil
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		pterm.Warning.Printfln("failed to stat %s: %v", path, err)
+		return "", err
+	}
+	if info.IsDir() {
+		return "", nil
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		pterm.Warning.Printfln("failed to read %s: %v", path, err)
+		return "", err
+	}
+
+	return string(data), nil
+}
+
 func (f *FileSystemConfig) SetContextFromGlob(pattern string) (string, error) {
 	files, err := doublestar.Glob(os.DirFS("."), pattern)
 	if err != nil {
@@ -114,27 +137,15 @@ func (f *FileSystemConfig) SetContextFromGlob(pattern string) (string, error) {
 	contents := make(map[string]string)
 
 	for _, fpath := range files {
-		if f.IsIgnored(fpath) {
-			continue
-		}
-
-		info, err := os.Stat(fpath)
+		data, err := f.GetFileContents(fpath)
 		if err != nil {
-			pterm.Warning.Printfln("failed to stat %s: %v", fpath, err)
 			continue
 		}
-		if info.IsDir() {
+		if data == "" {
 			continue
 		}
-
-		data, err := os.ReadFile(fpath)
-		if err != nil {
-			pterm.Warning.Printfln("failed to read %s: %v", fpath, err)
-			continue
-		}
-
 		pterm.Debug.Printfln("added file to context: %s", fpath)
-		contents[fpath] = string(data)
+		contents[fpath] = data
 	}
 
 	contentData, err := json.Marshal(contents)

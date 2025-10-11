@@ -23,16 +23,25 @@ type LLMRequest struct {
 	Prompt              string
 }
 type Researchable interface {
+	SetFileMapData(filePath, filePathData string)
 	SetResearchData(url, data string)
 }
+type RepoMappable interface {
+	SetRepoMapContext(repoMap string)
+}
+type FileMapData map[string]string
 type ResearchData map[string]string
 type AskData struct {
 	ResearchData
+	FileMapData
+	RepoMapContext string
 }
 type askDataDAGFunction func(inputs map[string]string) (string, error)
 
 type CodeData struct {
 	ResearchData
+	FileMapData
+	RepoMapContext    string
 	CodeModelResponse *CodeModelResponse
 }
 type codeDataDAGFunction func(inputs map[string]string) (string, error)
@@ -74,6 +83,7 @@ type CodeModelResponseWithParameters struct {
 
 type ResearchActions struct {
 	UrlsRecommended []string `json:"urls_recommended"`
+	FilesRequested  []string `json:"files_requested"`
 }
 
 type ResearchModelResponse struct {

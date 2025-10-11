@@ -16,14 +16,30 @@ func (a *AskData) SetResearchData(url, data string) {
 	a.ResearchData[url] = data
 }
 
+func (a *AskData) SetRepoMapContext(repoMap string) {
+	a.RepoMapContext = repoMap
+}
+
+func (a *AskData) SetFileMapData(filePath, fileMapData string) {
+	if a.FileMapData == nil {
+		a.FileMapData = make(map[string]string)
+	}
+	a.FileMapData[filePath] = fileMapData
+}
+
 func (a *AskData) generateAskFunction(coreConfig *CoreConfig, req *LLMRequest) askDataDAGFunction {
 	additionalContext := ""
 	for url, data := range a.ResearchData {
 		additionalContext += "------ scraped content from: " + url + "\n\n\n" + data + "\n\n\n" + "------------"
 	}
+	for filePath, fileContents := range a.FileMapData {
+		additionalContext += "----- requested file content: " + filePath + "\n\n\n" + fileContents + "\n\n\n" + "------------"
+	}
 	return func(inputs map[string]string) (string, error) {
 		coreConfig.Ask(
-			additionalContext+"\n\n\nwere visited above with content if available, you can now return to answering the prompt.\n\n\n"+req.Prompt,
+			a.RepoMapContext+"\n\nAbove is a mapping of the current repository\n\n"+
+				additionalContext+"\n\n\nwere visited above with content if available, you can now return to answering the prompt.\n\n\n"+
+				req.Prompt,
 			req.PersonaInstructions,
 			req.ModelID,
 			req.Glob,
@@ -44,6 +60,13 @@ func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) {
 		os.Exit(1)
 	}
 
+	repoMapVertex := &dag.Vertex[string, *AskData]{
+		Name: "repoMap",
+		DAG:  askDAG,
+		Run:  generateRepoMap(ctx, askData),
+	}
+	_ = askDAG.AddVertex(repoMapVertex)
+
 	researchVertex := &dag.Vertex[string, *AskData]{
 		Name: "research",
 		DAG:  askDAG,
@@ -58,6 +81,7 @@ func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) {
 	}
 	_ = askDAG.AddVertex(askVertex)
 
+	askDAG.Connect(repoMapVertex.Name, researchVertex.Name)
 	askDAG.Connect(researchVertex.Name, askVertex.Name)
 	pterm.Success.Println("askDAG beginning execution, planned flow printed")
 	askDAG.Visualize()

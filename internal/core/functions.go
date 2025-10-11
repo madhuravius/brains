@@ -9,6 +9,7 @@ import (
 
 	"github.com/madhuravius/brains/internal/aws"
 	"github.com/madhuravius/brains/internal/tools/browser"
+	"github.com/madhuravius/brains/internal/tools/repo_map"
 )
 
 func generateResearchRun[T Researchable](
@@ -23,11 +24,38 @@ func generateResearchRun[T Researchable](
 		for _, url := range researchActions.UrlsRecommended {
 			data, err := browser.FetchWebContext(ctx, url)
 			if err != nil {
-				pterm.Error.Printf("Failed to load url: %v\n", err)
+				pterm.Error.Printf("failed to load url: %v\n", err)
 				return "", err
 			}
 			t.SetResearchData(url, data)
 		}
+
+		for _, fileRequested := range researchActions.FilesRequested {
+			data, err := coreConfig.toolsConfig.fsToolConfig.GetFileContents(fileRequested)
+			if err != nil {
+				pterm.Warning.Printf("failed to load file contents from file requested (%s): %v\n", fileRequested, err)
+				continue
+			}
+			t.SetFileMapData(fileRequested, data)
+		}
+
+		return "", nil
+	}
+}
+
+func generateRepoMap[T RepoMappable](
+	ctx context.Context,
+	t T,
+) askDataDAGFunction {
+	return func(inputs map[string]string) (string, error) {
+		repoMap, err := repo_map.BuildRepoMap(ctx, "./")
+		if err != nil {
+			pterm.Error.Printf("failed to load repo map: %v\n", err)
+			return "", err
+		}
+
+		t.SetRepoMapContext(repoMap.ToPrompt())
+
 		return "", nil
 	}
 }

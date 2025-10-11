@@ -15,11 +15,13 @@ You must:
 - Suggest fetching urls if recommended and may help provide answers later.
 - Strictly limit all research and retrieval to the direct requirements of the parent task.
 - Avoid redundant or speculative research outside the task scope.
+- If you need data from files and the associated tags, specify which files you wish to have access to.
 
 Return **only JSON**, with the following exact schema:
 {
   "research_actions": {
-    "urls_recommended": ["url"]
+    "urls_recommended": ["url"],
+    "files_requested": ["./file/path.ext"]
   }
 }
 
@@ -47,8 +49,13 @@ var researcherToolConfig = &types.ToolConfiguration{
 										"items":       map[string]any{"type": "string"},
 										"description": "List of URLs that should be researched to supplement the parent prompt.",
 									},
+									"files_requested": map[string]any{
+										"type":        "array",
+										"items":       map[string]any{"type": "string"},
+										"description": "List of files with their content that should be read to supplement the parent prompt.",
+									},
 								},
-								"required": []string{"urls_recommended"},
+								"required": []string{"urls_recommended", "files_requested"},
 							},
 						},
 						"required": []string{"research_actions"},
