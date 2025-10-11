@@ -14,7 +14,7 @@ import (
 
 type CLIConfig struct {
 	awsConfig    *aws.AWSConfig
-	brainsConfig *config.BrainsConfig
+	brainsConfig config.BrainsConfigImpl
 	coreConfig   core.CoreImpl
 	persona      string
 	glob         string
@@ -53,11 +53,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	awsConfig := aws.NewAWSConfig(brainsConfig.AWSRegion)
-	awsConfig.SetLogger(brainsConfig)
+	awsConfig := aws.NewAWSConfig(brainsConfig.GetConfig().AWSRegion)
+	awsConfig.SetLogger(brainsConfig.GetConfig())
 
 	coreConfig := core.NewCoreConfig(awsConfig)
-	coreConfig.SetLogger(brainsConfig)
+	coreConfig.SetLogger(brainsConfig.GetConfig())
 
 	cliConfig := &CLIConfig{
 		awsConfig:    awsConfig,
@@ -75,7 +75,7 @@ func main() {
 				Action: func(c *cli.Context) error {
 					pterm.Info.Println("health checks starting")
 					cliConfig.validateAWSCredentials()
-					if !cliConfig.coreConfig.ValidateBedrockConfiguration(cliConfig.brainsConfig.Model) {
+					if !cliConfig.coreConfig.ValidateBedrockConfiguration(cliConfig.brainsConfig.GetConfig().Model) {
 						pterm.Error.Println("unable to access bedrock")
 						os.Exit(1)
 					}
@@ -86,7 +86,7 @@ func main() {
 			{
 				Name:  "ask",
 				Usage: "send a prompt to the Bedrock model and display the response",
-				Flags: generateCommonFlags(cliConfig, brainsConfig),
+				Flags: generateCommonFlags(cliConfig, brainsConfig.GetConfig()),
 				Action: func(c *cli.Context) error {
 					prompt := c.Args().Get(0)
 					if prompt == "" {
@@ -98,7 +98,7 @@ func main() {
 					if err = cliConfig.coreConfig.AskFlow(context.Background(), &core.LLMRequest{
 						Prompt:              prompt,
 						PersonaInstructions: personaInstructions,
-						ModelID:             cliConfig.brainsConfig.Model,
+						ModelID:             cliConfig.brainsConfig.GetConfig().Model,
 						Glob:                cliConfig.glob,
 					}); err != nil {
 						pterm.Error.Println("error on ask flow execution")
@@ -111,7 +111,7 @@ func main() {
 			{
 				Name:  "code",
 				Usage: "send a prompt to the Bedrock model and execute coding actions",
-				Flags: generateCommonFlags(cliConfig, brainsConfig),
+				Flags: generateCommonFlags(cliConfig, brainsConfig.GetConfig()),
 				Action: func(c *cli.Context) error {
 					prompt := c.Args().Get(0)
 					if prompt == "" {
@@ -123,7 +123,7 @@ func main() {
 					if err = cliConfig.coreConfig.CodeFlow(context.Background(), &core.LLMRequest{
 						Prompt:              prompt,
 						PersonaInstructions: personaInstructions,
-						ModelID:             cliConfig.brainsConfig.Model,
+						ModelID:             cliConfig.brainsConfig.GetConfig().Model,
 						Glob:                cliConfig.glob,
 					}); err != nil {
 						pterm.Error.Println("error on code flow execution")
@@ -138,7 +138,7 @@ func main() {
 				Name:  "pricing",
 				Usage: "print information on bedrock prices and selected model",
 				Action: func(c *cli.Context) error {
-					if err := awsConfig.PrintPricing(brainsConfig.Model); err != nil {
+					if err := awsConfig.PrintPricing(brainsConfig.GetConfig().Model); err != nil {
 						pterm.Error.Printfln("pricing failed: %v", err)
 						return err
 					}
@@ -149,7 +149,7 @@ func main() {
 				Name:  "log",
 				Usage: "print all logs",
 				Action: func(c *cli.Context) error {
-					cliConfig.brainsConfig.PrintLogs()
+					cliConfig.brainsConfig.GetConfig().PrintLogs()
 					pterm.Success.Println("logs printed")
 					return nil
 				},
@@ -158,7 +158,7 @@ func main() {
 				Name:  "reset",
 				Usage: "clear all logs",
 				Action: func(c *cli.Context) error {
-					if err := cliConfig.brainsConfig.Reset(); err != nil {
+					if err := cliConfig.brainsConfig.GetConfig().Reset(); err != nil {
 						pterm.Error.Printfln("reset failed: %v", err)
 						return err
 					}

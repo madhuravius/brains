@@ -12,7 +12,7 @@ import (
 
 type SupportedDAGDataTypes interface{ int | string }
 
-func NewDAG[T SupportedDAGDataTypes, D any](rootVertex string) (*DAG[T, D], error) {
+func NewDAG[T SupportedDAGDataTypes, D any](rootVertex string) (DAGImpl[T, D], error) {
 	vertexHash := func(v *Vertex[T, D]) string {
 		return v.Name
 	}

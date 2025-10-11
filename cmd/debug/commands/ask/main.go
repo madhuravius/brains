@@ -25,15 +25,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	awsConfig := aws.NewAWSConfig(brainsConfig.AWSRegion)
-	awsConfig.SetLogger(brainsConfig)
+	awsConfig := aws.NewAWSConfig(brainsConfig.GetConfig().AWSRegion)
+	awsConfig.SetLogger(brainsConfig.GetConfig())
 	if !awsConfig.SetAndValidateCredentials() {
 		pterm.Error.Println("unable to validate credentials")
 		os.Exit(1)
 	}
 
 	coreConfig := core.NewCoreConfig(awsConfig)
-	coreConfig.SetLogger(brainsConfig)
+	coreConfig.SetLogger(brainsConfig.GetConfig())
 
 	personaInstructions := brainsConfig.GetPersonaInstructions("dev")
 

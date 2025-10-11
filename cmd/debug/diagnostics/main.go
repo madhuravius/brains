@@ -15,15 +15,15 @@ func main() {
 		pterm.Fatal.Printf("load config: %v", err)
 	}
 
-	awsCfg := aws.NewAWSConfig(cfg.AWSRegion)
+	awsCfg := aws.NewAWSConfig(cfg.GetConfig().AWSRegion)
 	if !awsCfg.SetAndValidateCredentials() {
 		pterm.Fatal.Printf("invalid AWS credentials")
 	}
 
 	pterm.Info.Printf("Region: %s\nModel: %s\n",
-		cfg.AWSRegion, cfg.Model)
+		cfg.GetConfig().AWSRegion, cfg.GetConfig().Model)
 
-	data := awsCfg.DescribeModel(cfg.Model)
+	data := awsCfg.DescribeModel(cfg.GetConfig().Model)
 	if err != nil {
 		pterm.Fatal.Printfln("DescribeModel: %v", err)
 	}

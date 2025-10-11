@@ -22,9 +22,9 @@ func TestLoadConfigWhenNoFileExists(t *testing.T) {
 	cfg, err := config.LoadConfig()
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
-	assert.Equal(t, config.DefaultConfig.AWSRegion, cfg.AWSRegion)
-	assert.Equal(t, config.DefaultConfig.Model, cfg.Model)
-	assert.Empty(t, cfg.Personas)
+	assert.Equal(t, config.DefaultConfig.AWSRegion, cfg.GetConfig().AWSRegion)
+	assert.Equal(t, config.DefaultConfig.Model, cfg.GetConfig().Model)
+	assert.Empty(t, cfg.GetConfig().Personas)
 
 	expectedPath := filepath.Join(tmpDir, ".brains.yml")
 	_, statErr := os.Stat(expectedPath)
