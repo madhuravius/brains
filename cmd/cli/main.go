@@ -95,12 +95,15 @@ func main() {
 					}
 					cliConfig.validateAWSCredentials()
 					personaInstructions := cliConfig.brainsConfig.GetPersonaInstructions(cliConfig.persona)
-					cliConfig.coreConfig.AskFlow(context.Background(), &core.LLMRequest{
+					if err = cliConfig.coreConfig.AskFlow(context.Background(), &core.LLMRequest{
 						Prompt:              prompt,
 						PersonaInstructions: personaInstructions,
 						ModelID:             cliConfig.brainsConfig.Model,
 						Glob:                cliConfig.glob,
-					})
+					}); err != nil {
+						pterm.Error.Println("error on ask flow execution")
+						os.Exit(1)
+					}
 					pterm.Success.Println("question answered")
 					return nil
 				},
@@ -117,12 +120,12 @@ func main() {
 					}
 					cliConfig.validateAWSCredentials()
 					personaInstructions := cliConfig.brainsConfig.GetPersonaInstructions(cliConfig.persona)
-					if err != cliConfig.coreConfig.CodeFlow(context.Background(), &core.LLMRequest{
+					if err = cliConfig.coreConfig.CodeFlow(context.Background(), &core.LLMRequest{
 						Prompt:              prompt,
 						PersonaInstructions: personaInstructions,
 						ModelID:             cliConfig.brainsConfig.Model,
 						Glob:                cliConfig.glob,
-					}) {
+					}); err != nil {
 						pterm.Error.Println("error on code flow execution")
 						os.Exit(1)
 					}

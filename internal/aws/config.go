@@ -33,8 +33,8 @@ func NewAWSConfig(region string) *AWSConfig {
 	}
 }
 
-func getModelsPricing() ([]modelPricing, error) {
-	var out []modelPricing
+func getModelsPricing() ([]ModelPricing, error) {
+	var out []ModelPricing
 	if err := json.Unmarshal(rawModelsPricing, &out); err != nil {
 		pterm.Error.Printf("unable to load SDK config, %s\n", err.Error())
 		return nil, err
@@ -62,3 +62,4 @@ func (a *AWSConfig) SetAndValidateCredentials() bool {
 
 func (a *AWSConfig) GetConfig() aws.Config                 { return a.cfg }
 func (a *AWSConfig) SetLogger(l brainsConfig.SimpleLogger) { a.logger = l }
+func (a *AWSConfig) SetPricing(pricing []ModelPricing)     { a.pricing = pricing }

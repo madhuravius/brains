@@ -6,17 +6,17 @@ import (
 	"github.com/pterm/pterm"
 )
 
-func (c *AWSConfig) pricingFor(modelID string) (modelPricing, bool) {
+func (c *AWSConfig) pricingFor(modelID string) (ModelPricing, bool) {
 	for _, p := range c.pricing {
 		if p.ModelID == modelID {
 			return p, true
 		}
 	}
-	return modelPricing{}, false
+	return ModelPricing{}, false
 }
 
 func (a *AWSConfig) PrintCost(usage map[string]any, modelID string) {
-	p := modelPricing{}
+	p := ModelPricing{}
 	if val, ok := a.pricingFor(modelID); ok {
 		p = val
 	}
@@ -33,13 +33,11 @@ func (a *AWSConfig) PrintCost(usage map[string]any, modelID string) {
 	}
 	cost := (float64(promptTokens)/1000.0)*p.InputCostPer1kTokens + (float64(completionTokens)/1000.0)*p.
 		OutputCostPer1kTokens
-	pterm.Info.Printf("estimated cost for this request: $%.6f (prompt %d, completion %d)\n", cost, promptTokens,
+	pterm.Info.Printf("estimated cost for this request (%s): $%.6f (prompt %d, completion %d)\n", modelID, cost, promptTokens,
 		completionTokens)
 }
 
-func (a *AWSConfig) PrintContext(usage map[string]any) {
-	// token limit is still a fixed safety bound (128 000)
-	const tokenLimit = 128000
+func (a *AWSConfig) PrintContext(usage map[string]any, modelID string) {
 	promptTokens, completionTokens := 0, 0
 	if v, ok := usage["prompt_tokens"]; ok {
 		if n, ok := v.(float64); ok {
@@ -52,7 +50,7 @@ func (a *AWSConfig) PrintContext(usage map[string]any) {
 		}
 	}
 	total := promptTokens + completionTokens
-	pterm.Info.Printf("current context used: %d tokens (limit %d)\n", total, tokenLimit)
+	pterm.Info.Printf("current context used (%s): %d tokens (limit %d)\n", modelID, total, TokenLimit)
 }
 
 func (a *AWSConfig) PrintPricing(modelID string) error {
@@ -62,7 +60,7 @@ func (a *AWSConfig) PrintPricing(modelID string) error {
 		"Input Cost / 1k Tokens",
 		"Output Cost / 1k Tokens",
 	}}
-	var activeModel modelPricing
+	var activeModel ModelPricing
 	for _, p := range a.pricing {
 		if modelID == p.ModelID {
 			activeModel = p

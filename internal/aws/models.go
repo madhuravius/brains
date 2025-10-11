@@ -16,7 +16,7 @@ type AggregatedModelPricing struct {
 	OutputCostPer1kTokens float64
 }
 
-type modelPricing struct {
+type ModelPricing struct {
 	ModelID               string  `json:"ModelID"`
 	ModelName             string  `json:"ModelName"`
 	InputCostPer1kTokens  float64 `json:"InputCostPer1kTokens"`
@@ -29,7 +29,7 @@ type AWSConfig struct {
 	invoker BedrockInvoker
 	logger  brainsConfig.SimpleLogger
 
-	pricing []modelPricing
+	pricing []ModelPricing
 }
 
 type ResponseMessage struct {

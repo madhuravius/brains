@@ -165,9 +165,6 @@ func TestExtractAnyJSON_SimpleObject(t *testing.T) {
 }
 
 func TestExtractAnyJSON_ArrayCorrupted(t *testing.T) {
-	type Obj struct {
-		A int `json:"a"`
-	}
 	raw := `**Project[ 	{ 	"name":"data_extractor", 	"parameters":{ 		"research_actions":{ 			"files_requested":[ "README.md" ], 			"urls_recommended":[] 		} 	}  } ]`
 	out, err := core.ExtractAnyJSON[core.ResearchModelResponseWithParameters](raw)
 	if err != nil {

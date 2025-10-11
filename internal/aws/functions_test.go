@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"os"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -18,17 +17,6 @@ import (
 	awsBrains "github.com/madhuravius/brains/internal/aws"
 	mockBrains "github.com/madhuravius/brains/internal/mock"
 )
-
-func captureStdout(fn func()) string {
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-	fn()
-	_ = w.Close()
-	os.Stdout = old
-	b, _ := io.ReadAll(r)
-	return string(b)
-}
 
 func TestCallAWSBedrockSuccess(t *testing.T) {
 	cfg := &awsBrains.AWSConfig{}
@@ -143,14 +131,14 @@ func TestPrintCost(t *testing.T) {
 func TestPrintContext(t *testing.T) {
 	cfg := &awsBrains.AWSConfig{}
 	assert.NotPanics(t, func() {
-		cfg.PrintContext(map[string]any{"prompt_tokens": 300, "completion_tokens": 200})
+		cfg.PrintContext(map[string]any{"prompt_tokens": 300, "completion_tokens": 200}, "modelid")
 	})
 }
 
 func TestPrintBedrockMessage(t *testing.T) {
 	cfg := &awsBrains.AWSConfig{}
 	md := "# Header\n\n* item"
-	out := captureStdout(func() {
+	out := mockBrains.CaptureAllOutput(func() {
 		cfg.PrintBedrockMessage(md)
 	})
 	assert.NotEmpty(t, out)

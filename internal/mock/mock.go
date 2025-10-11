@@ -2,12 +2,48 @@ package mock
 
 import (
 	"context"
+	"io"
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/service/bedrock"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/pterm/pterm"
 	"github.com/stretchr/testify/mock"
 )
+
+func CaptureAllOutput(fn func()) string {
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	pterm.SetDefaultOutput(w)
+
+	printers := []*pterm.PrefixPrinter{
+		&pterm.Info,
+		&pterm.Error,
+		&pterm.Warning,
+		&pterm.Success,
+		&pterm.Debug,
+		&pterm.Fatal,
+	}
+	oldWriters := make([]io.Writer, len(printers))
+	for i, p := range printers {
+		oldWriters[i] = p.Writer
+		p.Writer = w
+	}
+
+	fn()
+
+	_ = w.Close()
+	os.Stdout = oldStdout
+	for i, p := range printers {
+		p.Writer = oldWriters[i]
+	}
+
+	out, _ := io.ReadAll(r)
+	return string(out)
+}
 
 type TestLogger struct {
 	Data string
