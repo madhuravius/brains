@@ -3,7 +3,6 @@ package core
 import (
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 )
 
@@ -19,7 +18,7 @@ func (r CodeModelResponse) IsHydrated() bool {
 }
 
 func (r ResearchModelResponse) IsHydrated() bool {
-	return len(r.ResearchActions.UrlsRecommended) > 0
+	return len(r.ResearchActions.UrlsRecommended) > 0 || len(r.ResearchActions.FilesRequested) > 0
 }
 
 func (w CodeModelResponseWithParameters) GetParameters() CodeModelResponse {
@@ -104,6 +103,75 @@ func ExtractResponse[T Hydratable, TP any](
 	return nil, fmt.Errorf("unrecognized or empty JSON structure")
 }
 
+func ExtractAnyJSON[T any](raw string) (*T, error) {
+	raw = strings.TrimSpace(raw)
+
+	// Find first possible JSON start
+	start := strings.IndexAny(raw, "{[")
+	if start == -1 {
+		return nil, fmt.Errorf("no JSON start found")
+	}
+	raw = raw[start:]
+
+	// Try to find where JSON ends by counting braces/brackets
+	var (
+		depth      int
+		inString   bool
+		escapeNext bool
+		end        int
+	)
+
+	for i, ch := range raw {
+		switch ch {
+		case '\\':
+			if inString {
+				escapeNext = !escapeNext
+			}
+		case '"':
+			if !escapeNext {
+				inString = !inString
+			}
+			escapeNext = false
+		case '{', '[':
+			if !inString {
+				depth++
+			}
+		case '}', ']':
+			if !inString {
+				depth--
+				if depth == 0 {
+					end = i + 1
+					goto FOUND
+				}
+			}
+		default:
+			escapeNext = false
+		}
+	}
+
+FOUND:
+	candidate := raw
+	if end > 0 {
+		candidate = raw[:end]
+	}
+
+	candidate = RepairJSON(candidate)
+
+	// 1. Try single object
+	var v T
+	if err := json.Unmarshal([]byte(candidate), &v); err == nil {
+		return &v, nil
+	}
+
+	// 2. Try array of objects
+	var arr []T
+	if err := json.Unmarshal([]byte(candidate), &arr); err == nil && len(arr) > 0 {
+		return &arr[0], nil
+	}
+
+	return nil, fmt.Errorf("no valid JSON found in input")
+}
+
 func RepairJSON(s string) string {
 	openBraces := strings.Count(s, "{")
 	closeBraces := strings.Count(s, "}")
@@ -119,17 +187,4 @@ func RepairJSON(s string) string {
 		closeBrackets++
 	}
 	return s
-}
-
-func ExtractAnyJSON[T any](raw string) (*T, error) {
-	// non-greedy match, allows partial or unclosed JSON fragments
-	re := regexp.MustCompile(`(?s)(\{.*?\}|\[.*?\]|\{.*|\[.*)`)
-	for _, m := range re.FindAllString(raw, -1) {
-		m = RepairJSON(m)
-		var result T
-		if json.Unmarshal([]byte(m), &result) == nil {
-			return &result, nil
-		}
-	}
-	return nil, fmt.Errorf("no valid JSON found")
 }

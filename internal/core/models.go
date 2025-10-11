@@ -1,10 +1,20 @@
 package core
 
 import (
+	"context"
+
 	awsConfig "github.com/madhuravius/brains/internal/aws"
 	brainsConfig "github.com/madhuravius/brains/internal/config"
 	"github.com/madhuravius/brains/internal/tools/file_system"
 )
+
+type CoreImpl interface {
+	AskFlow(ctx context.Context, llmRequest *LLMRequest) error
+	CodeFlow(ctx context.Context, llmRequest *LLMRequest) error
+	ValidateBedrockConfiguration(modelID string) bool
+
+	SetLogger(l brainsConfig.SimpleLogger)
+}
 
 type toolsConfig struct {
 	fsToolConfig *file_system.FileSystemConfig

@@ -15,7 +15,7 @@ import (
 type CLIConfig struct {
 	awsConfig    *aws.AWSConfig
 	brainsConfig *config.BrainsConfig
-	coreConfig   *core.CoreConfig
+	coreConfig   core.CoreImpl
 	persona      string
 	glob         string
 }

@@ -164,6 +164,20 @@ func TestExtractAnyJSON_SimpleObject(t *testing.T) {
 	}
 }
 
+func TestExtractAnyJSON_ArrayCorrupted(t *testing.T) {
+	type Obj struct {
+		A int `json:"a"`
+	}
+	raw := `**Project[ 	{ 	"name":"data_extractor", 	"parameters":{ 		"research_actions":{ 			"files_requested":[ "README.md" ], 			"urls_recommended":[] 		} 	}  } ]`
+	out, err := core.ExtractAnyJSON[core.ResearchModelResponseWithParameters](raw)
+	if err != nil {
+		t.Fatalf("expected valid JSON extraction, got error: %v", err)
+	}
+	if out.Name != "data_extractor" {
+		t.Errorf("expected A=data_extractor, got %s", out.Name)
+	}
+}
+
 func TestExtractAnyJSON_Array(t *testing.T) {
 	type Obj struct {
 		Name string `json:"name"`

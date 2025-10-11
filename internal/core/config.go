@@ -10,7 +10,7 @@ import (
 	"github.com/madhuravius/brains/internal/tools/file_system"
 )
 
-func NewCoreConfig(awsConfig *aws.AWSConfig) *CoreConfig {
+func NewCoreConfig(awsConfig *aws.AWSConfig) CoreImpl {
 	fsToolConfig, err := file_system.NewFileSystemConfig()
 	if err != nil {
 		pterm.Error.Printf("Failed to load fs tool configuration: %v\n", err)

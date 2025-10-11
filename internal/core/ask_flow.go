@@ -49,7 +49,7 @@ func (a *AskData) generateAskFunction(coreConfig *CoreConfig, req *LLMRequest) a
 	}
 }
 
-func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) {
+func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) error {
 	askData := &AskData{
 		ResearchData: make(map[string]string),
 	}
@@ -88,7 +88,9 @@ func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) {
 
 	if _, err = askDAG.Run(); err != nil {
 		pterm.Error.Printf("Failed to run DAG: %v\n", err)
-		os.Exit(1)
+		return err
 	}
 	pterm.Success.Println("askDAG completed in execution successfully")
+
+	return nil
 }
