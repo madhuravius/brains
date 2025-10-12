@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/madhuravius/brains/internal/tools"
 )
 
 func (r *RepoMap) ToPrompt() string {
@@ -45,8 +47,18 @@ func BuildRepoMap(ctx context.Context, repoRoot string) (*RepoMap, error) {
 	var repo RepoMap
 	repo.Path = repoRoot
 
-	err := filepath.Walk(repoRoot, func(path string, info os.FileInfo, _ error) error {
+	ignoreList, err := tools.LoadGitignore(fmt.Sprintf("%s/.gitignore", repoRoot))
+	if err != nil {
+		return nil, err
+	}
+	repo.commonTools = tools.NewCommonToolsConfig(ignoreList)
+
+	err = filepath.Walk(repoRoot, func(path string, info os.FileInfo, _ error) error {
 		if info.IsDir() || !isSourceFile(path) {
+			return nil
+		}
+
+		if repo.commonTools.IsIgnored(path) {
 			return nil
 		}
 

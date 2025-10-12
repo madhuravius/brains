@@ -1,8 +1,12 @@
 package repo_map
 
+import "github.com/madhuravius/brains/internal/tools"
+
 type RepoMap struct {
 	Path  string     `json:"path"`
 	Files []*FileMap `json:"files"`
+
+	commonTools tools.CommonToolsImpl
 }
 
 type FileMap struct {
