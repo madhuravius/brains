@@ -67,12 +67,16 @@ func elixirSymbolFromCall(n *sitter.Node, src []byte) (symType, name string, par
 		if head := elixirFindHeadCall(n, src); head != nil {
 			name = elixirHeadName(head, src)
 			params = elixirHeadParams(head, src)
+		} else {
+			name = elixirFirstArgText(n, src)
 		}
 	case "defmacro", "defmacrop":
 		symType = "macro"
 		if head := elixirFindHeadCall(n, src); head != nil {
 			name = elixirHeadName(head, src)
 			params = elixirHeadParams(head, src)
+		} else {
+			name = elixirFirstArgText(n, src)
 		}
 	default:
 		return "", "", nil, false
@@ -99,20 +103,6 @@ func elixirCallName(n *sitter.Node, src []byte) string {
 			}
 		}
 	}
-	txt := strings.TrimSpace(nodeContent(n, src))
-	start := 0
-	for start < len(txt) && (txt[start] == ' ' || txt[start] == '\t' || txt[start] == '\n' || txt[start] == '(') {
-		start++
-	}
-	for i := start; i < len(txt); i++ {
-		switch txt[i] {
-		case ' ', '\t', '\n', '(':
-			return strings.TrimSpace(txt[start:i])
-		}
-	}
-	if start < len(txt) {
-		return strings.TrimSpace(txt[start:])
-	}
 	return ""
 }
 
@@ -123,27 +113,6 @@ func elixirExtractFunctionName(fn *sitter.Node, src []byte) string {
 	case "dot":
 		if r := fn.ChildByFieldName("right"); r != nil && r.Type() == "identifier" {
 			return nodeContent(r, src)
-		}
-		for i := int(fn.ChildCount()) - 1; i >= 0; i-- {
-			if c := fn.Child(i); c.Type() == "identifier" {
-				return nodeContent(c, src)
-			}
-		}
-	case "qualified_call", "call":
-		if f := fn.ChildByFieldName("function"); f != nil {
-			if name := elixirExtractFunctionName(f, src); name != "" {
-				return name
-			}
-		}
-		if f := fn.ChildByFieldName("callee"); f != nil {
-			if name := elixirExtractFunctionName(f, src); name != "" {
-				return name
-			}
-		}
-		for i := 0; i < int(fn.ChildCount()); i++ {
-			if name := elixirExtractFunctionName(fn.Child(i), src); name != "" {
-				return name
-			}
 		}
 	}
 	return ""
@@ -186,16 +155,7 @@ func elixirHeadName(head *sitter.Node, src []byte) string {
 			return nodeContent(head.Child(i), src)
 		}
 	}
-	txt := nodeContent(head, src)
-	if idx := strings.Index(txt, "("); idx > 0 {
-		tok := strings.TrimSpace(txt[:idx])
-		parts := strings.Fields(tok)
-		if len(parts) > 0 {
-			return parts[len(parts)-1]
-		}
-		return tok
-	}
-	return strings.TrimSpace(txt)
+	return ""
 }
 
 func elixirHeadParams(head *sitter.Node, src []byte) []Param {
@@ -226,12 +186,12 @@ func elixirHeadParams(head *sitter.Node, src []byte) []Param {
 
 func extractElixirDoc(symType string, n *sitter.Node, src []byte) string {
 	switch symType {
-	case "module", "protocol", "impl":
+	case "module", "impl":
 		if doc := elixirModuledocInBlock(n, src); doc != "" {
 			return doc
 		}
 		return leadingDocComments("elixir", n, src)
-	case "function", "macro":
+	case "function", "macro", "protocol":
 		if doc := elixirLeadingDocAttribute(n, src); doc != "" {
 			return doc
 		}

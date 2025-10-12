@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -45,6 +47,23 @@ func captureStdout(fn func()) string {
 	return string(out)
 }
 
+func setupServer() *httptest.Server {
+	html := `<!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+    <p>Hello World from Test</p>
+</body>
+</html>`
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(html))
+	}))
+
+	return srv
+}
+
 func TestValidateBedrockConfiguration_Success(t *testing.T) {
 	c, inv := setupCore(t)
 
@@ -83,6 +102,9 @@ func TestValidateBedrockConfiguration_Failure(t *testing.T) {
 }
 
 func TestAskFlow_Success(t *testing.T) {
+	srv := setupServer()
+	defer srv.Close()
+
 	c, inv := setupCore(t)
 
 	inv.
@@ -97,7 +119,7 @@ func TestAskFlow_Success(t *testing.T) {
                 "parameters": {
                   "markdown_summary": "mock",
                   "research_actions": { 
-                    "urls_recommended": [], 
+                    "urls_recommended": ["` + srv.URL + `"], 
                     "files_requested": []
                   } 
                 }
@@ -136,6 +158,9 @@ func TestAskFlow_Success(t *testing.T) {
 }
 
 func TestCodeFlow_Success(t *testing.T) {
+	srv := setupServer()
+	defer srv.Close()
+
 	c, inv := setupCore(t)
 
 	inv.
@@ -150,7 +175,7 @@ func TestCodeFlow_Success(t *testing.T) {
                 "parameters": {
                   "markdown_summary": "mock",
                   "research_actions": { 
-                    "urls_recommended": [], 
+                    "urls_recommended": ["` + srv.URL + `"], 
                     "files_requested": []
                   } 
                 }
