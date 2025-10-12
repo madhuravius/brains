@@ -2,6 +2,8 @@ package tools
 
 type CommonToolsImpl interface {
 	IsIgnored(path string) bool
+
+	SetIgnorePatterns([]string)
 }
 
 type CommonToolsConfig struct {

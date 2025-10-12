@@ -56,3 +56,27 @@ func TestLoadGitignoreParsesPatterns(t *testing.T) {
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []string{"*.log", "build/"}, patterns)
 }
+
+func TestIsIgnored_CoverageForSlashPatterns(t *testing.T) {
+	c := &tools.CommonToolsConfig{}
+	c.SetIgnorePatterns([]string{
+		"/dist/app.js",
+		"foo/bar.txt",
+		"docs/*",
+		"nohit/*.txt",
+		"pkg/*",
+	},
+	)
+
+	assert.True(t, c.IsIgnored("dist/app.js"))
+	assert.False(t, c.IsIgnored("examples/dist/app.js"))
+
+	assert.True(t, c.IsIgnored("foo/bar.txt"))
+	assert.True(t, c.IsIgnored("a/b/foo/bar.txt"))
+	assert.False(t, c.IsIgnored("foo/baz.txt"))
+
+	assert.True(t, c.IsIgnored("pkg/a/b/c.txt"))
+	assert.False(t, c.IsIgnored("pkgx/a.txt"))
+
+	assert.False(t, c.IsIgnored("bar/baz.go"))
+}

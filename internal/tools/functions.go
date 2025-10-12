@@ -5,3 +5,7 @@ func NewCommonToolsConfig(ignorePatterns []string) CommonToolsImpl {
 		ignorePatterns: ignorePatterns,
 	}
 }
+
+func (c *CommonToolsConfig) SetIgnorePatterns(ignorePatterns []string) {
+	c.ignorePatterns = ignorePatterns
+}

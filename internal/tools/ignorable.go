@@ -3,6 +3,7 @@ package tools
 import (
 	"bufio"
 	"os"
+	pathpkg "path"
 	"path/filepath"
 	"strings"
 
@@ -35,8 +36,16 @@ func LoadGitignore(path string) ([]string, error) {
 func (c *CommonToolsConfig) IsIgnored(path string) bool {
 	path = filepath.ToSlash(path)
 
-	if strings.HasPrefix(path, ".git/") || path == ".git" {
+	// Ignore .git dir anywhere
+	if strings.Contains("/"+path+"/", "/.git/") || path == ".git" || strings.HasSuffix(path, "/.git") {
 		return true
+	}
+
+	// Apply default ignore names by basename early
+	if base := filepath.Base(path); base != "" {
+		if _, found := defaultIgnoreNames[base]; found {
+			return true
+		}
 	}
 
 	for _, pat := range c.ignorePatterns {
@@ -46,27 +55,70 @@ func (c *CommonToolsConfig) IsIgnored(path string) bool {
 		}
 
 		pat = filepath.ToSlash(pat)
+
+		// Handle directory patterns
 		if strings.HasSuffix(pat, "/") {
-			if strings.HasPrefix(path, pat) {
+			dir := strings.TrimSuffix(pat, "/")
+			if dir == "" {
+				continue
+			}
+
+			anchored := strings.HasPrefix(dir, "/")
+			if anchored {
+				// anchored to repo root: "/build/" matches "build/..."
+				dir = strings.TrimPrefix(dir, "/")
+				if strings.HasPrefix(path, dir+"/") || path == dir {
+					return true
+				}
+			} else {
+				// unanchored: "node_modules/" matches at any depth
+				// ensure segment boundaries to avoid matching "my_node_modules"
+				if strings.Contains("/"+path+"/", "/"+dir+"/") || path == dir || strings.HasSuffix(path, "/"+dir) {
+					return true
+				}
+			}
+			continue
+		}
+
+		// If pattern has no slash, it matches basenames at any depth
+		if !strings.Contains(pat, "/") {
+			if matched, _ := pathpkg.Match(pat, filepath.Base(path)); matched {
 				return true
 			}
 			continue
 		}
 
-		base := filepath.Base(path)
-		if _, found := defaultIgnoreNames[base]; found {
-			return true
+		// Pattern with slashes:
+		// - If it starts with "/", treat it as anchored to repo root.
+		// - Otherwise, try to match at any depth by sliding over path segments.
+		if strings.HasPrefix(pat, "/") {
+			ap := strings.TrimPrefix(pat, "/")
+			if matched, _ := pathpkg.Match(ap, path); matched {
+				return true
+			}
+			continue
 		}
 
-		if matched, _ := filepath.Match(pat, path); matched {
-			return true
+		// Try unanchored match at any depth
+		rest := path
+		for {
+			if matched, _ := pathpkg.Match(pat, rest); matched {
+				return true
+			}
+			i := strings.IndexByte(rest, '/')
+			if i < 0 {
+				break
+			}
+			rest = rest[i+1:]
 		}
 
-		basePath := filepath.Base(path)
-		if matched, _ := filepath.Match(pat, basePath); matched {
+		// Fallbacks you already had
+		if matched, _ := pathpkg.Match(pat, path); matched {
 			return true
 		}
-
+		if matched, _ := pathpkg.Match(pat, filepath.Base(path)); matched {
+			return true
+		}
 		if strings.HasSuffix(pat, "*") {
 			prefix := strings.TrimSuffix(pat, "*")
 			if strings.HasPrefix(path, prefix) {
