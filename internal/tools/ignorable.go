@@ -70,12 +70,10 @@ func (c *CommonToolsConfig) IsIgnored(path string) bool {
 				if strings.HasPrefix(path, dir+"/") || path == dir {
 					return true
 				}
-			} else {
+			} else if strings.Contains("/"+path+"/", "/"+dir+"/") || path == dir || strings.HasSuffix(path, "/"+dir) {
 				// unanchored: "node_modules/" matches at any depth
 				// ensure segment boundaries to avoid matching "my_node_modules"
-				if strings.Contains("/"+path+"/", "/"+dir+"/") || path == dir || strings.HasSuffix(path, "/"+dir) {
-					return true
-				}
+				return true
 			}
 			continue
 		}
