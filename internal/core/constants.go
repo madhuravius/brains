@@ -16,15 +16,18 @@ You must:
 - Strictly limit all research and retrieval to the direct requirements of the parent task.
 - Avoid redundant or speculative research outside the task scope.
 - If you need data from files and the associated tags, specify which files you wish to have access to.
+- Include a short markdown summary of why you are asking for details.
 
 Return **only JSON**, with the following exact schema:
 {
+  "markdown_summary": "string",
   "research_actions": {
     "urls_recommended": ["url"],
     "files_requested": ["./file/path.ext"]
   }
 }
 
+- "markdown_summary": a short summary of why you are requesting data
 - "research_actions": a possible collection of activities (ex: urls_recommended) to act on
 
 Do NOT include extra text or commentary. Only return JSON.
@@ -41,6 +44,9 @@ var researcherToolConfig = &types.ToolConfiguration{
 					Value: document.NewLazyDocument(map[string]any{
 						"type": "object",
 						"properties": map[string]any{
+							"markdown_summary": map[string]any{
+								"type": "string",
+							},
 							"research_actions": map[string]any{
 								"type": "object",
 								"properties": map[string]any{
@@ -58,7 +64,7 @@ var researcherToolConfig = &types.ToolConfiguration{
 								"required": []string{"urls_recommended", "files_requested"},
 							},
 						},
-						"required": []string{"research_actions"},
+						"required": []string{"markdown_summary", "research_actions"},
 					}),
 				},
 			},

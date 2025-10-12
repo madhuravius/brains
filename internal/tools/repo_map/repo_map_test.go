@@ -239,26 +239,41 @@ func TestRust_DocsAndParams(t *testing.T) {
 	assert.Contains(t, out, "Doc: Speak trait")
 }
 
+// repo_map_test.go
+
 func TestElixir_DocsAndParams(t *testing.T) {
 	t.Parallel()
 	out := renderSingleFile(t, "elixir", "elixir/sample.ex")
 
-	// Symbols
 	assert.Contains(t, out, "- module Greeter")
-	assert.Contains(t, out, "- function hello")
-	assert.Contains(t, out, "- function private_thing")
-	assert.Contains(t, out, "- macro debug")
-
-	// Params (function head). Defaults parsed but not necessarily rendered.
-	assert.Contains(t, out, "hello(")
-	assert.Contains(t, out, "name")
-	assert.Contains(t, out, "private_thing(")
-	assert.Contains(t, out, "x")
-	assert.Contains(t, out, "debug(")
-	assert.Contains(t, out, "expr")
-
-	// Docs (@moduledoc and @doc)
 	assert.Contains(t, out, "Doc: Greeter module docs.")
+
+	assert.Contains(t, out, "- function hello(name)") // Note: Renderer might not show default
 	assert.Contains(t, out, "Doc: Says hello.")
+
+	assert.Contains(t, out, "- function private_thing(x)")
+	assert.Contains(t, out, "- macro debug(expr)")
 	assert.Contains(t, out, "Doc: Debug macro.")
+
+	assert.Contains(t, out, "- macro private_macro(val)")
+	assert.Contains(t, out, "Doc: A private macro.")
+
+	assert.Contains(t, out, "- protocol Parser")
+	assert.Contains(t, out, "Doc: A simple protocol.")
+	assert.Contains(t, out, "- function parse(data)")
+	assert.Contains(t, out, "Doc: Parses the data.")
+
+	assert.Contains(t, out, "- impl Parser") // The symbol name is the protocol
+	assert.Contains(t, out, "- function parse(_data)")
+
+	assert.Contains(t, out, "- function no_args")
+	assert.Contains(t, out, "- function no_parens")
+
+	assert.Contains(t, out, "- function undocumented_fun")
+	assert.NotContains(t, out, "undocumented_fun()\n    Doc:")
+
+	assert.Contains(t, out, "- function commented_fun")
+
+	assert.Contains(t, out, "- function fun_with_separated_doc")
+	assert.NotContains(t, out, "function fun_with_separated_doc()\n    Doc: This doc should be ignored.")
 }

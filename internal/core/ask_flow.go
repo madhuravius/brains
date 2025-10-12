@@ -2,10 +2,13 @@ package core
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/pterm/pterm"
 
+	"github.com/madhuravius/brains/internal/aws"
 	"github.com/madhuravius/brains/internal/dag"
 )
 
@@ -68,16 +71,18 @@ func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) error 
 	_ = askDAG.AddVertex(repoMapVertex)
 
 	researchVertex := &dag.Vertex[string, *AskData]{
-		Name: "research",
-		DAG:  askDAG,
-		Run:  generateResearchRun(c, ctx, llmRequest, askData),
+		Name:        "research",
+		DAG:         askDAG,
+		Run:         generateResearchRun(c, ctx, llmRequest, askData),
+		EnableRetry: true,
 	}
 	_ = askDAG.AddVertex(researchVertex)
 
 	askVertex := &dag.Vertex[string, *AskData]{
-		Name: "ask",
-		DAG:  askDAG,
-		Run:  askData.generateAskFunction(c, llmRequest),
+		Name:        "ask",
+		DAG:         askDAG,
+		Run:         askData.generateAskFunction(c, llmRequest),
+		EnableRetry: true,
 	}
 	_ = askDAG.AddVertex(askVertex)
 
@@ -93,4 +98,56 @@ func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) error 
 	pterm.Success.Println("askDAG completed in execution successfully")
 
 	return nil
+}
+
+func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool {
+	pterm.Info.Println("starting ask operation")
+	ctx := context.Background()
+	promptToSendBedrock := prompt
+	if logCtx := c.logger.GetLogContext(); logCtx != "" {
+		promptToSendBedrock = fmt.Sprintf("%s\n\n%s", logCtx, prompt)
+	}
+	if personaInstructions != "" {
+		prompt = fmt.Sprintf("%s%s", personaInstructions, prompt)
+	}
+	c.logger.LogMessage("[REQUEST] \n " + prompt)
+
+	addedContext, err := c.enrichWithGlob(glob)
+	if err != nil {
+		return false
+	}
+	if addedContext != "" {
+		promptToSendBedrock = fmt.Sprintf("%s%s", prompt, addedContext)
+	}
+	req := aws.BedrockRequest{
+		Messages: []aws.BedrockMessage{
+			{
+				Role: "user",
+				Content: []aws.BedrockContent{
+					{
+						Type: "text",
+						Text: promptToSendBedrock,
+					},
+				},
+			},
+		},
+	}
+
+	respBody, err := c.awsImpl.CallAWSBedrock(ctx, modelID, req)
+	if err != nil {
+		pterm.Error.Printf("invokeModel error: %v\n", err)
+		return false
+	}
+	var data aws.ChatResponse
+	if err := json.Unmarshal(respBody, &data); err != nil {
+		pterm.Error.Printf("json Unmarshal error (when parsing Bedrock Body): %v\n", err)
+		return false
+	}
+	for _, choice := range data.Choices {
+		c.logger.LogMessage("[RESPONSE] \n " + choice.Message.Content)
+		c.awsImpl.PrintBedrockMessage(choice.Message.Content)
+	}
+	c.awsImpl.PrintCost(data.Usage, modelID)
+	c.awsImpl.PrintContext(data.Usage, modelID)
+	return true
 }

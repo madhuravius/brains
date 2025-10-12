@@ -62,7 +62,6 @@ func (a *AWSConfig) CallAWSBedrockConverse(
 	toolConfig *bedrockruntimeTypes.ToolConfiguration,
 ) ([]byte, error) {
 	client := a.GetInvoker()
-
 	messages := []bedrockruntimeTypes.Message{}
 	for _, m := range req.Messages {
 		var content bedrockruntimeTypes.ContentBlockMemberText
