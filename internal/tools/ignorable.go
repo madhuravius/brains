@@ -91,8 +91,7 @@ func (c *CommonToolsConfig) IsIgnored(path string) bool {
 		// Pattern with slashes:
 		// - If it starts with "/", treat it as anchored to repo root.
 		// - Otherwise, try to match at any depth by sliding over path segments.
-		if strings.HasPrefix(pat, "/") {
-			ap := strings.TrimPrefix(pat, "/")
+		if ap, ok := strings.CutPrefix(pat, "/"); ok {
 			if matched, _ := pathpkg.Match(ap, path); matched {
 				return true
 			}
