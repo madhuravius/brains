@@ -14,6 +14,8 @@ type CoreImpl interface {
 	ValidateBedrockConfiguration(modelID string) bool
 
 	SetLogger(l brainsConfig.SimpleLogger)
+	GetAWSConfig() awsConfig.AWSImpl
+	SetAWSConfig(a awsConfig.AWSImpl)
 }
 
 type toolsConfig struct {
@@ -97,6 +99,7 @@ type ResearchActions struct {
 }
 
 type ResearchModelResponse struct {
+	MarkdownSummary string          `json:"markdown_summary"`
 	ResearchActions ResearchActions `json:"research_actions"`
 }
 

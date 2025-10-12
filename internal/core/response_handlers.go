@@ -18,7 +18,7 @@ func (r CodeModelResponse) IsHydrated() bool {
 }
 
 func (r ResearchModelResponse) IsHydrated() bool {
-	return len(r.ResearchActions.UrlsRecommended) > 0 || len(r.ResearchActions.FilesRequested) > 0
+	return r.MarkdownSummary != "" || len(r.ResearchActions.UrlsRecommended) > 0 || len(r.ResearchActions.FilesRequested) > 0
 }
 
 func (w CodeModelResponseWithParameters) GetParameters() CodeModelResponse {

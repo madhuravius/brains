@@ -19,6 +19,7 @@ func generateResearchRun[T Researchable](
 	t T,
 ) askDataDAGFunction {
 	return func(inputs map[string]string) (string, error) {
+		pterm.Info.Println("starting research operation")
 		researchActions := coreConfig.Research(req.Prompt, req.ModelID, req.Glob)
 
 		for _, url := range researchActions.UrlsRecommended {
@@ -75,57 +76,6 @@ func (c *CoreConfig) enrichWithGlob(glob string) (string, error) {
 		}
 	}
 	return addedContext, nil
-}
-
-func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool {
-	ctx := context.Background()
-	promptToSendBedrock := prompt
-	if logCtx := c.logger.GetLogContext(); logCtx != "" {
-		promptToSendBedrock = fmt.Sprintf("%s\n\n%s", logCtx, prompt)
-	}
-	if personaInstructions != "" {
-		prompt = fmt.Sprintf("%s%s", personaInstructions, prompt)
-	}
-	c.logger.LogMessage("[REQUEST] \n " + prompt)
-
-	addedContext, err := c.enrichWithGlob(glob)
-	if err != nil {
-		return false
-	}
-	if addedContext != "" {
-		promptToSendBedrock = fmt.Sprintf("%s%s", prompt, addedContext)
-	}
-	req := aws.BedrockRequest{
-		Messages: []aws.BedrockMessage{
-			{
-				Role: "user",
-				Content: []aws.BedrockContent{
-					{
-						Type: "text",
-						Text: promptToSendBedrock,
-					},
-				},
-			},
-		},
-	}
-
-	respBody, err := c.awsImpl.CallAWSBedrock(ctx, modelID, req)
-	if err != nil {
-		pterm.Error.Printf("invokeModel error: %v\n", err)
-		return false
-	}
-	var data aws.ChatResponse
-	if err := json.Unmarshal(respBody, &data); err != nil {
-		pterm.Error.Printf("json Unmarshal error (when parsing Bedrock Body): %v\n", err)
-		return false
-	}
-	for _, choice := range data.Choices {
-		c.logger.LogMessage("[RESPONSE] \n " + choice.Message.Content)
-		c.awsImpl.PrintBedrockMessage(choice.Message.Content)
-	}
-	c.awsImpl.PrintCost(data.Usage, modelID)
-	c.awsImpl.PrintContext(data.Usage, modelID)
-	return true
 }
 
 func (c *CoreConfig) Research(prompt, modelID, glob string) *ResearchActions {
