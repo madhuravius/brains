@@ -113,10 +113,9 @@ func normalizeDocForPrompt(s string) string {
 	}
 	s = strings.ReplaceAll(s, "\r\n", "\n")
 	s = strings.ReplaceAll(s, "\r", "\n")
-	for _, ln := range strings.Split(s, "\n") {
+	for ln := range strings.SplitSeq(s, "\n") {
 		ln = strings.TrimSpace(ln)
 		if ln != "" {
-			// collapse sequences of whitespace to a single space
 			return strings.Join(strings.Fields(ln), " ")
 		}
 	}

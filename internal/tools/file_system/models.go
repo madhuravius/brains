@@ -1,16 +1,18 @@
 package file_system
 
+import "github.com/madhuravius/brains/internal/tools"
+
 type FileSystemConfig struct {
-	ignorePatterns []string
+	commonTools tools.CommonToolsImpl
 }
 
 func NewFileSystemConfig() (*FileSystemConfig, error) {
-	ignorePatterns, err := LoadGitignore(".gitignore")
+	ignorePatterns, err := tools.LoadGitignore(".gitignore")
 	if err != nil {
 		return nil, err
 	}
 
 	return &FileSystemConfig{
-		ignorePatterns: ignorePatterns,
+		commonTools: tools.NewCommonToolsConfig(ignorePatterns),
 	}, nil
 }
