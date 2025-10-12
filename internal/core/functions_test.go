@@ -135,6 +135,66 @@ func TestAskFlow_Success(t *testing.T) {
 	inv.AssertExpectations(t)
 }
 
+func TestCodeFlow_Success(t *testing.T) {
+	c, inv := setupCore(t)
+
+	inv.
+		On("ConverseModel", mock.Anything, mock.Anything).
+		Return(&bedrockruntime.ConverseOutput{
+			Output: &bedrockruntimeTypes.ConverseOutputMemberMessage{
+				Value: bedrockruntimeTypes.Message{
+					Role: "assistant",
+					Content: []bedrockruntimeTypes.ContentBlock{
+						&bedrockruntimeTypes.ContentBlockMemberText{Value: `{
+                "name": "assistant", 
+                "parameters": {
+                  "markdown_summary": "mock",
+                  "research_actions": { 
+                    "urls_recommended": [], 
+                    "files_requested": []
+                  } 
+                }
+              }`},
+					},
+				},
+			},
+		}, nil).
+		Once()
+
+	inv.
+		On("ConverseModel", mock.Anything, mock.Anything).
+		Return(&bedrockruntime.ConverseOutput{
+			Output: &bedrockruntimeTypes.ConverseOutputMemberMessage{
+				Value: bedrockruntimeTypes.Message{
+					Role: "assistant",
+					Content: []bedrockruntimeTypes.ContentBlock{
+						&bedrockruntimeTypes.ContentBlockMemberText{Value: `{
+                "name": "assistant", 
+                "parameters": {
+                  "markdown_summary": "mock code response",
+                  "code_updates": [],
+                  "add_code_files": [],
+                  "remove_code_files": []
+                }
+              }`},
+					},
+				},
+			},
+		}, nil).
+		Once()
+
+	output := captureStdout(func() {
+		err := c.CodeFlow(context.Background(), &core.LLMRequest{
+			Prompt:  "prompt",
+			ModelID: "model",
+		})
+		assert.NoError(t, err)
+	})
+
+	assert.Contains(t, output, "mock code response")
+	inv.AssertExpectations(t)
+}
+
 func TestCore_AWSConfig_GetterSetter(t *testing.T) {
 	c, _ := setupCore(t)
 
