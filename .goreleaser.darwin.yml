@@ -20,7 +20,8 @@ archives:
       - README.md
 
 checksum:
-  name_template: "checksums.txt"
+  name_template: "checksums-darwin.txt"
+  ids: ["brains-darwin"]
 
 changelog:
   sort: desc
