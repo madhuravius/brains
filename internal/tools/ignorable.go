@@ -3,8 +3,8 @@ package tools
 import (
 	"bufio"
 	"os"
-	pathpkg "path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/pterm/pterm"
@@ -33,96 +33,93 @@ func LoadGitignore(path string) ([]string, error) {
 	return patterns, scanner.Err()
 }
 
-func (c *CommonToolsConfig) IsIgnored(path string) bool {
-	path = filepath.ToSlash(path)
+// getPatternFromLine - this function is heavily adopted from https://github.com/sabhiram/go-gitignore/blob/master/ignore.go
+// it helps determine what the actual regex to set up gitignore validity is
+func getPatternFromLine(line string) (*regexp.Regexp, bool) {
+	line = strings.TrimRight(line, "\r")
 
-	// Ignore .git dir anywhere
+	if strings.HasPrefix(line, `#`) {
+		return nil, false
+	}
+
+	line = strings.Trim(line, " ")
+
+	if line == "" {
+		return nil, false
+	}
+
+	negatePattern := false
+	if line[0] == '!' {
+		negatePattern = true
+		line = line[1:]
+	}
+
+	if regexp.MustCompile(`^(\#|\!)`).MatchString(line) {
+		line = line[1:]
+	}
+
+	if regexp.MustCompile(`([^\/+])/.*\*\.`).MatchString(line) && line[0] != '/' {
+		line = "/" + line
+	}
+
+	line = regexp.MustCompile(`\.`).ReplaceAllString(line, `\.`)
+
+	magicStar := "#$~"
+
+	if strings.HasPrefix(line, "/**/") {
+		line = line[1:]
+	}
+	line = regexp.MustCompile(`/\*\*/`).ReplaceAllString(line, `(/|/.+/)`)
+	line = regexp.MustCompile(`\*\*/`).ReplaceAllString(line, `(|.`+magicStar+`/)`)
+	line = regexp.MustCompile(`/\*\*`).ReplaceAllString(line, `(|/.`+magicStar+`)`)
+
+	line = regexp.MustCompile(`\\\*`).ReplaceAllString(line, `\`+magicStar)
+	line = regexp.MustCompile(`\*`).ReplaceAllString(line, `([^/]*)`)
+
+	line = strings.ReplaceAll(line, "?", `\?`)
+
+	line = strings.ReplaceAll(line, magicStar, "*")
+
+	var expr = ""
+	if strings.HasSuffix(line, "/") {
+		expr = line + "(|.*)$"
+	} else {
+		expr = line + "(|/.*)$"
+	}
+	if strings.HasPrefix(expr, "/") {
+		expr = "^(|/)" + expr[1:]
+	} else {
+		expr = "^(|.*/)" + expr
+	}
+	pattern, _ := regexp.Compile(expr)
+
+	return pattern, negatePattern
+}
+
+func (c *CommonToolsConfig) IsIgnored(path string) bool {
 	if strings.Contains("/"+path+"/", "/.git/") || path == ".git" || strings.HasSuffix(path, "/.git") {
 		return true
 	}
 
-	// Apply default ignore names by basename early
 	if base := filepath.Base(path); base != "" {
 		if _, found := defaultIgnoreNames[base]; found {
 			return true
 		}
 	}
 
-	for _, pat := range c.ignorePatterns {
-		pat = strings.TrimSpace(pat)
-		if pat == "" {
-			continue
-		}
-
-		pat = filepath.ToSlash(pat)
-
-		// Handle directory patterns
-		if strings.HasSuffix(pat, "/") {
-			dir := strings.TrimSuffix(pat, "/")
-			if dir == "" {
-				continue
-			}
-
-			anchored := strings.HasPrefix(dir, "/")
-			if anchored {
-				// anchored to repo root: "/build/" matches "build/..."
-				dir = strings.TrimPrefix(dir, "/")
-				if strings.HasPrefix(path, dir+"/") || path == dir {
-					return true
-				}
-			} else if strings.Contains("/"+path+"/", "/"+dir+"/") || path == dir || strings.HasSuffix(path, "/"+dir) {
-				// unanchored: "node_modules/" matches at any depth
-				// ensure segment boundaries to avoid matching "my_node_modules"
-				return true
-			}
-			continue
-		}
-
-		// If pattern has no slash, it matches basenames at any depth
-		if !strings.Contains(pat, "/") {
-			if matched, _ := pathpkg.Match(pat, filepath.Base(path)); matched {
-				return true
-			}
-			continue
-		}
-
-		// Pattern with slashes:
-		// - If it starts with "/", treat it as anchored to repo root.
-		// - Otherwise, try to match at any depth by sliding over path segments.
-		if ap, ok := strings.CutPrefix(pat, "/"); ok {
-			if matched, _ := pathpkg.Match(ap, path); matched {
-				return true
-			}
-			continue
-		}
-
-		// Try unanchored match at any depth
-		rest := path
-		for {
-			if matched, _ := pathpkg.Match(pat, rest); matched {
-				return true
-			}
-			i := strings.IndexByte(rest, '/')
-			if i < 0 {
-				break
-			}
-			rest = rest[i+1:]
-		}
-
-		// Fallbacks you already had
-		if matched, _ := pathpkg.Match(pat, path); matched {
-			return true
-		}
-		if matched, _ := pathpkg.Match(pat, filepath.Base(path)); matched {
-			return true
-		}
-		if strings.HasSuffix(pat, "*") {
-			prefix := strings.TrimSuffix(pat, "*")
-			if strings.HasPrefix(path, prefix) {
-				return true
+	// Replace OS-specific path separator.
+	matchesPath := false
+	for _, ip := range c.regexPatterns {
+		if ip.pattern.MatchString(path) {
+			// If this is a regular target (not negated with a gitignore
+			// exclude "!" etc)
+			if !ip.negate {
+				matchesPath = true
+			} else if matchesPath {
+				// Negated pattern, and matchesPath is already set
+				matchesPath = false
 			}
 		}
 	}
-
-	return false
+	return matchesPath
 }

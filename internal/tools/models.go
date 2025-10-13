@@ -1,13 +1,21 @@
 package tools
 
+import "regexp"
+
 type CommonToolsImpl interface {
 	IsIgnored(path string) bool
 
 	SetIgnorePatterns([]string)
 }
 
+type regexPattern struct {
+	pattern *regexp.Regexp
+	negate  bool
+}
+
 type CommonToolsConfig struct {
 	ignorePatterns []string
+	regexPatterns  []*regexPattern
 }
 
 var defaultIgnoreNames = map[string]struct{}{
