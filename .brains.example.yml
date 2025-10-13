@@ -3,6 +3,11 @@ model: openai.gpt-oss-120b-1:0
 logging_enabled: true
 default_persona: dev
 default_context: "**/*"
+# pre_commands will execute commands with "bash -c 'command'" before starting. a good example to ensure AWS credentials with aws sso:
+#
+# pre_commands:
+#  - aws sts get-caller-identity >/dev/null 2>&1 || aws sso login
+pre_commands: []
 personas:
   arch: |
     ROLE: Software Architect & Senior Engineer  

@@ -23,7 +23,9 @@ type BrainsConfig struct {
 	Personas       map[string]string `yaml:"personas"`
 	DefaultContext string            `yaml:"default_context"`
 	DefaultPersona string            `yaml:"default_persona"`
-	logger         logger            `yaml:"-"`
+	PreCommands    []string          `yaml:"pre_commands"`
+
+	logger logger `yaml:"-"`
 }
 
 type BrainsConfigImpl interface {
