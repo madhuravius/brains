@@ -5,8 +5,6 @@ builds:
   - id: brains
     main: ./cmd/cli         
     binary: brains          
-    env:
-      - CGO_ENABLED=0       
     goos:
       - linux
       - windows
