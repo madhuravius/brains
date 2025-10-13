@@ -69,6 +69,11 @@ func main() {
 		coreConfig:   coreConfig,
 	}
 
+	if err := brainsConfig.GetConfig().PreCommandsHook(); err != nil {
+		pterm.Error.Println("error on precommands hook execution")
+		os.Exit(1)
+	}
+
 	app := &cli.App{
 		Name:  "brains",
 		Usage: "a simple LLM wrapper using AWS Bedrock",
