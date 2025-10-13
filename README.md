@@ -72,4 +72,6 @@ All commands are wrapped in the Makefile; run `make help` for a quick overview o
 This project is licensed under the MIT License – see the [LICENSE](LICENSE.md) file for details.
 
 ## Acknowledgements
+
 Thank you to the creators of the [Aider chat tool](https://github.com/Aider-AI/aider) for the inspiration and design principles that helped shape this project.
+I heavily borrowed code from [go-gitignore](https://github.com/sabhiram/go-gitignore) to avoid replicating a lot of my own.

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/pterm/pterm"
@@ -32,48 +33,93 @@ func LoadGitignore(path string) ([]string, error) {
 	return patterns, scanner.Err()
 }
 
-func (c *CommonToolsConfig) IsIgnored(path string) bool {
-	path = filepath.ToSlash(path)
+// getPatternFromLine - this function is heavily adopted from https://github.com/sabhiram/go-gitignore/blob/master/ignore.go
+// it helps determine what the actual regex to set up gitignore validity is
+func getPatternFromLine(line string) (*regexp.Regexp, bool) {
+	line = strings.TrimRight(line, "\r")
 
-	if strings.HasPrefix(path, ".git/") || path == ".git" {
+	if strings.HasPrefix(line, `#`) {
+		return nil, false
+	}
+
+	line = strings.Trim(line, " ")
+
+	if line == "" {
+		return nil, false
+	}
+
+	negatePattern := false
+	if line[0] == '!' {
+		negatePattern = true
+		line = line[1:]
+	}
+
+	if regexp.MustCompile(`^(\#|\!)`).MatchString(line) {
+		line = line[1:]
+	}
+
+	if regexp.MustCompile(`([^\/+])/.*\*\.`).MatchString(line) && line[0] != '/' {
+		line = "/" + line
+	}
+
+	line = regexp.MustCompile(`\.`).ReplaceAllString(line, `\.`)
+
+	magicStar := "#$~"
+
+	if strings.HasPrefix(line, "/**/") {
+		line = line[1:]
+	}
+	line = regexp.MustCompile(`/\*\*/`).ReplaceAllString(line, `(/|/.+/)`)
+	line = regexp.MustCompile(`\*\*/`).ReplaceAllString(line, `(|.`+magicStar+`/)`)
+	line = regexp.MustCompile(`/\*\*`).ReplaceAllString(line, `(|/.`+magicStar+`)`)
+
+	line = regexp.MustCompile(`\\\*`).ReplaceAllString(line, `\`+magicStar)
+	line = regexp.MustCompile(`\*`).ReplaceAllString(line, `([^/]*)`)
+
+	line = strings.ReplaceAll(line, "?", `\?`)
+
+	line = strings.ReplaceAll(line, magicStar, "*")
+
+	var expr = ""
+	if strings.HasSuffix(line, "/") {
+		expr = line + "(|.*)$"
+	} else {
+		expr = line + "(|/.*)$"
+	}
+	if strings.HasPrefix(expr, "/") {
+		expr = "^(|/)" + expr[1:]
+	} else {
+		expr = "^(|.*/)" + expr
+	}
+	pattern, _ := regexp.Compile(expr)
+
+	return pattern, negatePattern
+}
+
+func (c *CommonToolsConfig) IsIgnored(path string) bool {
+	if strings.Contains("/"+path+"/", "/.git/") || path == ".git" || strings.HasSuffix(path, "/.git") {
 		return true
 	}
 
-	for _, pat := range c.ignorePatterns {
-		pat = strings.TrimSpace(pat)
-		if pat == "" {
-			continue
-		}
-
-		pat = filepath.ToSlash(pat)
-		if strings.HasSuffix(pat, "/") {
-			if strings.HasPrefix(path, pat) {
-				return true
-			}
-			continue
-		}
-
-		base := filepath.Base(path)
+	if base := filepath.Base(path); base != "" {
 		if _, found := defaultIgnoreNames[base]; found {
 			return true
 		}
+	}
 
-		if matched, _ := filepath.Match(pat, path); matched {
-			return true
-		}
-
-		basePath := filepath.Base(path)
-		if matched, _ := filepath.Match(pat, basePath); matched {
-			return true
-		}
-
-		if strings.HasSuffix(pat, "*") {
-			prefix := strings.TrimSuffix(pat, "*")
-			if strings.HasPrefix(path, prefix) {
-				return true
+	// Replace OS-specific path separator.
+	matchesPath := false
+	for _, ip := range c.regexPatterns {
+		if ip.pattern.MatchString(path) {
+			// If this is a regular target (not negated with a gitignore
+			// exclude "!" etc)
+			if !ip.negate {
+				matchesPath = true
+			} else if matchesPath {
+				// Negated pattern, and matchesPath is already set
+				matchesPath = false
 			}
 		}
 	}
-
-	return false
+	return matchesPath
 }

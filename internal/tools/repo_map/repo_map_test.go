@@ -57,6 +57,17 @@ func TestRepoMapGitignore(t *testing.T) {
 	assert.Contains(t, repoMap.Files[0].Path, "1.py")
 }
 
+func TestRepoMapGitignoreWithDepth(t *testing.T) {
+	ctx := context.Background()
+	path := "test_fixtures/test_ignores_nodejs"
+	repoMap, err := repo_map.BuildRepoMap(ctx, path)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, repoMap)
+	assert.Equal(t, len(repoMap.Files), 1)
+	assert.Contains(t, repoMap.Files[0].Path, "1.ts")
+}
+
 func TestGo_DocsAndParams(t *testing.T) {
 	t.Parallel()
 	out := renderSingleFile(t, "go", "go/sample.go")
