@@ -28,6 +28,8 @@ go.work
 output/*
 !output/.gitkeep
 
+dist
+
 build/*
 !build/.gitkeep
 

@@ -1,0 +1,30 @@
+project_name: brains
+version: 2
+
+builds:
+  - id: brains-darwin
+    main: ./cmd/cli
+    binary: brains
+    env:
+      - CGO_ENABLED=1
+    goos: [darwin]
+    goarch: [amd64, arm64]
+    tags: [netgo, osusergo]
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    wrap_in_directory: true
+    files:
+      - LICENSE.md
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: desc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
