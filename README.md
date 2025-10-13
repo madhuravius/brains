@@ -32,6 +32,21 @@ __Disclaimer__: Much like Aider, the goal of this project is for me to learn, bu
   - `repo_map` – use tree‑sitter to produce tags, symbols, and a repository map.
 
 ## Installation
+
+### Automated installation
+
+Run the below command:
+
+```sh
+# primary GH url
+curl -fsSL https://github.com/madhuravius/brains/blob/main/scripts/installer.sh?raw=true | bash
+
+# verify
+brains --help
+```
+
+### Manual installation
+
 ```bash
 make build      # produces ./brains (or run `go build ./cmd/cli`)
 ```
