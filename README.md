@@ -38,6 +38,9 @@ __Disclaimer__: Much like Aider, the goal of this project is for me to learn, bu
 Run the below command:
 
 ```sh
+# short url
+curl -fsSL https://brains.pads.sh | bash
+
 # primary GH url
 curl -fsSL https://github.com/madhuravius/brains/blob/main/scripts/installer.sh?raw=true | bash
 
