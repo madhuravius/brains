@@ -31,13 +31,7 @@ func (a *AskData) SetFileMapData(filePath, fileMapData string) {
 }
 
 func (a *AskData) generateAskFunction(coreConfig *CoreConfig, req *LLMRequest) askDataDAGFunction {
-	additionalContext := ""
-	for url, data := range a.ResearchData {
-		additionalContext += "------ scraped content from: " + url + "\n\n\n" + data + "\n\n\n" + "------------"
-	}
-	for filePath, fileContents := range a.FileMapData {
-		additionalContext += "----- requested file content: " + filePath + "\n\n\n" + fileContents + "\n\n\n" + "------------"
-	}
+	additionalContext := a.generateInitialContextRun()
 	return func(inputs map[string]string) (string, error) {
 		coreConfig.Ask(
 			a.RepoMapContext+"\n\nAbove is a mapping of the current repository\n\n"+
@@ -54,7 +48,9 @@ func (a *AskData) generateAskFunction(coreConfig *CoreConfig, req *LLMRequest) a
 
 func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) error {
 	askData := &AskData{
-		ResearchData: make(map[string]string),
+		CommonData: &CommonData{
+			ResearchData: make(map[string]string),
+		},
 	}
 
 	askDAG, err := dag.NewDAG[string, *AskData]("_ask")

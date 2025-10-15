@@ -43,20 +43,28 @@ type RepoMappable interface {
 }
 type FileMapData map[string]string
 type ResearchData map[string]string
-type AskData struct {
+
+type CommonData struct {
 	ResearchData
 	FileMapData
+}
+
+type AskData struct {
+	*CommonData
 	RepoMapContext string
 }
 type askDataDAGFunction func(inputs map[string]string) (string, error)
 
 type CodeData struct {
-	ResearchData
-	FileMapData
+	*CommonData
 	RepoMapContext    string
 	CodeModelResponse *CodeModelResponse
 }
 type codeDataDAGFunction func(inputs map[string]string) (string, error)
+
+type InitialContextSettable interface {
+	generateInitialContextRun() string
+}
 
 type Hydratable interface {
 	IsHydrated() bool

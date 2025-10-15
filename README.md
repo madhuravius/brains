@@ -88,7 +88,7 @@ All commands are wrapped in the Makefile; run `make help` for a quick overview o
 
 ## Results
 
-So far, have successfully vibed:
+So far, have successfully vibed out:
 
 * [brains.pads.sh](https://brains.pads.sh) - very simple application that acts as a redirect-heavy
 Next.js application that either routes for `curl` requests or redirects here for web.

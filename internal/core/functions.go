@@ -12,6 +12,18 @@ import (
 	"github.com/madhuravius/brains/internal/tools/repo_map"
 )
 
+func (d *CommonData) generateInitialContextRun() string {
+	additionalContext := ""
+	for url, data := range d.ResearchData {
+		additionalContext += "------ scraped content from: " + url + "\n\n\n" + data + "\n\n\n" + "------------"
+	}
+	for filePath, fileContents := range d.FileMapData {
+		additionalContext += "----- requested file content: " + filePath + "\n\n\n" + fileContents + "\n\n\n" + "------------"
+	}
+
+	return additionalContext
+}
+
 func generateResearchRun[T Researchable](
 	coreConfig *CoreConfig,
 	ctx context.Context,

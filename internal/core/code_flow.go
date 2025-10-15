@@ -59,7 +59,9 @@ func (c *CodeData) generateExecuteCodeEditsFunction(coreConfig *CoreConfig) code
 
 func (c *CoreConfig) CodeFlow(ctx context.Context, llmRequest *LLMRequest) error {
 	codeData := &CodeData{
-		ResearchData: make(map[string]string),
+		CommonData: &CommonData{
+			ResearchData: make(map[string]string),
+		},
 	}
 
 	codeDAG, err := dag.NewDAG[string, *CodeData]("_code")
