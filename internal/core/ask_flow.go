@@ -12,24 +12,6 @@ import (
 	"github.com/madhuravius/brains/internal/dag"
 )
 
-func (a *AskData) SetResearchData(url, data string) {
-	if a.ResearchData == nil {
-		a.ResearchData = make(map[string]string)
-	}
-	a.ResearchData[url] = data
-}
-
-func (a *AskData) SetRepoMapContext(repoMap string) {
-	a.RepoMapContext = repoMap
-}
-
-func (a *AskData) SetFileMapData(filePath, fileMapData string) {
-	if a.FileMapData == nil {
-		a.FileMapData = make(map[string]string)
-	}
-	a.FileMapData[filePath] = fileMapData
-}
-
 func (a *AskData) generateAskFunction(coreConfig *CoreConfig, req *LLMRequest) askDataDAGFunction {
 	additionalContext := a.generateInitialContextRun()
 	return func(inputs map[string]string) (string, error) {

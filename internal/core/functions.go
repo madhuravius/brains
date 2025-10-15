@@ -12,6 +12,24 @@ import (
 	"github.com/madhuravius/brains/internal/tools/repo_map"
 )
 
+func (c *CommonData) SetResearchData(url, data string) {
+	if c.ResearchData == nil {
+		c.ResearchData = make(map[string]string)
+	}
+	c.ResearchData[url] = data
+}
+
+func (c *CommonData) SetRepoMapContext(repoMap string) {
+	c.RepoMapContext = repoMap
+}
+
+func (c *CommonData) SetFileMapData(filePath, fileMapData string) {
+	if c.FileMapData == nil {
+		c.FileMapData = make(map[string]string)
+	}
+	c.FileMapData[filePath] = fileMapData
+}
+
 func (d *CommonData) generateInitialContextRun() string {
 	additionalContext := ""
 	for url, data := range d.ResearchData {

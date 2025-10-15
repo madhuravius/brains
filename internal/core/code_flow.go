@@ -10,24 +10,6 @@ import (
 	"github.com/madhuravius/brains/internal/dag"
 )
 
-func (c *CodeData) SetResearchData(url, data string) {
-	if c.ResearchData == nil {
-		c.ResearchData = make(map[string]string)
-	}
-	c.ResearchData[url] = data
-}
-
-func (c *CodeData) SetRepoMapContext(repoMap string) {
-	c.RepoMapContext = repoMap
-}
-
-func (c *CodeData) SetFileMapData(filePath, fileMapData string) {
-	if c.FileMapData == nil {
-		c.FileMapData = make(map[string]string)
-	}
-	c.FileMapData[filePath] = fileMapData
-}
-
 func (c *CodeData) generateDetermineCodeChangesFunction(coreConfig *CoreConfig, req *LLMRequest) codeDataDAGFunction {
 	additionalContext := ""
 	for url, data := range c.ResearchData {

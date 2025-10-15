@@ -47,17 +47,16 @@ type ResearchData map[string]string
 type CommonData struct {
 	ResearchData
 	FileMapData
+	RepoMapContext string
 }
 
 type AskData struct {
 	*CommonData
-	RepoMapContext string
 }
 type askDataDAGFunction func(inputs map[string]string) (string, error)
 
 type CodeData struct {
 	*CommonData
-	RepoMapContext    string
 	CodeModelResponse *CodeModelResponse
 }
 type codeDataDAGFunction func(inputs map[string]string) (string, error)
