@@ -12,6 +12,7 @@ type Vertex[T any, D any] struct {
 	Order       int
 	Run         func(inputs map[string]T) (T, error)
 	DAG         DAGImpl[T, D]
+	Needs       map[*Vertex[T, D]]bool
 	EnableRetry bool
 	MaxRetries  int
 	SkipConfig  *SkipVertexConfig

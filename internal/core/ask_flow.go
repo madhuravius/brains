@@ -46,6 +46,13 @@ func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) error 
 		DAG:  askDAG,
 		Run:  generateRepoMap(ctx, askData),
 	}
+	if !c.brainsConfig.GetConfig().ContextConfig.SendAllTags {
+		repoMapVertex.SkipConfig = &dag.SkipVertexConfig{
+			Enabled: true,
+			Reason:  "send_all_tags flag is disabled",
+		}
+	}
+
 	_ = askDAG.AddVertex(repoMapVertex)
 
 	researchVertex := &dag.Vertex[string, *AskData]{

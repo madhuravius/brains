@@ -2,7 +2,6 @@ package dag
 
 import (
 	"fmt"
-	"slices"
 	"sort"
 	"strings"
 
@@ -198,29 +197,15 @@ func (v *Vertex[T, D]) shouldSkip() bool {
 		return true
 	}
 
-	edges, _ := v.DAG.GetEdges()
-	verts := v.DAG.GetVertices()
-
-	parents := make(map[string][]string, len(edges))
-	for _, e := range edges {
-		parents[e.Target] = append(parents[e.Target], e.Source)
+	if v.Needs != nil {
+		for ancestor, ancestorNeeded := range v.Needs {
+			if ancestorNeeded && ancestor.SkipConfig.Enabled {
+				return true
+			}
+		}
 	}
 
-	seen := make(map[string]bool)
-	var dfs func(string) bool
-	dfs = func(id string) bool {
-		if seen[id] {
-			return false
-		}
-		seen[id] = true
-
-		if a := verts[id]; a != nil && a.SkipConfig != nil && a.SkipConfig.Enabled {
-			return true
-		}
-		return slices.ContainsFunc(parents[id], dfs)
-	}
-
-	return slices.ContainsFunc(parents[v.Name], dfs)
+	return false
 }
 
 func (v *Vertex[T, D]) visualizeNonRootVertex(sb *strings.Builder) {

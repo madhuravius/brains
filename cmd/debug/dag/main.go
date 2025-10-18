@@ -35,19 +35,23 @@ func skippedDAG() {
 
 	v1 := &dag.Vertex[int, int]{Name: "a"}
 	v2 := &dag.Vertex[int, int]{Name: "b", SkipConfig: &dag.SkipVertexConfig{Enabled: true, Reason: "skipping for debug"}}
-	v3 := &dag.Vertex[int, int]{Name: "c"}
-	v4 := &dag.Vertex[int, int]{Name: "d"}
+	v3 := &dag.Vertex[int, int]{Name: "c", Needs: map[*dag.Vertex[int, int]]bool{v2: true}}
+	v4 := &dag.Vertex[int, int]{Name: "d", Needs: map[*dag.Vertex[int, int]]bool{v2: true, v3: true}}
+	// should NOT get skipped
+	v5 := &dag.Vertex[int, int]{Name: "e", Needs: map[*dag.Vertex[int, int]]bool{}}
 
 	_ = d2.AddVertex(v1)
 	_ = d2.AddVertex(v2)
 	_ = d2.AddVertex(v3)
 	_ = d2.AddVertex(v4)
+	_ = d2.AddVertex(v5)
 
 	d2.Connect("root (no skip)", v1.Name)
 	d2.Connect(v1.Name, v2.Name)
 	d2.Connect(v2.Name, v3.Name)
 	d2.Connect(v1.Name, v3.Name)
 	d2.Connect(v3.Name, v4.Name)
+	d2.Connect(v3.Name, v5.Name)
 	d2.Visualize()
 }
 
