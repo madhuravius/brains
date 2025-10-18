@@ -2,6 +2,11 @@ package dag
 
 import "github.com/dominikbraun/graph"
 
+type SkipVertexConfig struct {
+	Enabled bool
+	Reason  string
+}
+
 type Vertex[T any, D any] struct {
 	Name        string
 	Order       int
@@ -9,6 +14,7 @@ type Vertex[T any, D any] struct {
 	DAG         DAGImpl[T, D]
 	EnableRetry bool
 	MaxRetries  int
+	SkipConfig  *SkipVertexConfig
 }
 
 type DAG[T any, D any] struct {

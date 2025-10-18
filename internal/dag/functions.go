@@ -2,6 +2,7 @@ package dag
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -34,6 +35,7 @@ func (d *DAG[T, D]) AddVertex(v *Vertex[T, D]) error {
 	if err := d.graph.AddVertex(v); err != nil {
 		return err
 	}
+	v.DAG = d
 	d.vertices[v.Name] = v
 	return nil
 }
@@ -61,6 +63,9 @@ func (d *DAG[T, D]) Run() (map[string]T, error) {
 	for _, name := range order {
 		v, _ := d.graph.Vertex(name)
 		if v.Run == nil {
+			continue
+		}
+		if v.shouldSkip() {
 			continue
 		}
 
@@ -167,9 +172,9 @@ func (d *DAG[T, D]) visualizeNode(name string, adj map[string][]*Vertex[T, D], v
 	visited[name] = true
 
 	if name == d.rootVertex.Name {
-		sb.WriteString("`1. " + name + "`")
+		sb.WriteString("1. `" + name + "`")
 	} else {
-		sb.WriteString("`" + fmt.Sprintf("%d. ", d.vertices[name].Order) + name + "`")
+		d.vertices[name].visualizeNonRootVertex(sb)
 	}
 	children := adj[name]
 	if len(children) > 0 {
@@ -186,4 +191,44 @@ func (d *DAG[T, D]) visualizeNode(name string, adj map[string][]*Vertex[T, D], v
 	for _, c := range children {
 		d.visualizeNode(c.Name, adj, visited, sb)
 	}
+}
+
+func (v *Vertex[T, D]) shouldSkip() bool {
+	if v.SkipConfig != nil && v.SkipConfig.Enabled {
+		return true
+	}
+
+	edges, _ := v.DAG.GetEdges()
+	verts := v.DAG.GetVertices()
+
+	parents := make(map[string][]string, len(edges))
+	for _, e := range edges {
+		parents[e.Target] = append(parents[e.Target], e.Source)
+	}
+
+	seen := make(map[string]bool)
+	var dfs func(string) bool
+	dfs = func(id string) bool {
+		if seen[id] {
+			return false
+		}
+		seen[id] = true
+
+		if a := verts[id]; a != nil && a.SkipConfig != nil && a.SkipConfig.Enabled {
+			return true
+		}
+		return slices.ContainsFunc(parents[id], dfs)
+	}
+
+	return slices.ContainsFunc(parents[v.Name], dfs)
+}
+
+func (v *Vertex[T, D]) visualizeNonRootVertex(sb *strings.Builder) {
+	vertexAsString := fmt.Sprintf("%d. ", v.Order)
+	if v.shouldSkip() {
+		vertexAsString += "`" + v.Name + "`" + "[__SKIPPED__](#)"
+	} else {
+		vertexAsString += "`" + v.Name + "`"
+	}
+	sb.WriteString(vertexAsString)
 }
