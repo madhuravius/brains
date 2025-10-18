@@ -60,7 +60,7 @@ func main() {
 	awsImpl := aws.NewAWSConfig(brainsConfig.GetConfig().AWSRegion)
 	awsImpl.SetLogger(brainsConfig.GetConfig())
 
-	coreConfig := core.NewCoreConfig(awsImpl)
+	coreConfig := core.NewCoreConfig(awsImpl, brainsConfig)
 	coreConfig.SetLogger(brainsConfig.GetConfig())
 
 	cliConfig := &CLIConfig{

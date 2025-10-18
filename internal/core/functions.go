@@ -108,6 +108,17 @@ func (c *CoreConfig) enrichWithGlob(glob string) (string, error) {
 	return addedContext, nil
 }
 
+func (c *CoreConfig) addLogContextToPrompt(currentPrompt string) string {
+	if !c.brainsConfig.GetConfig().ContextConfig.SendLogs {
+		return currentPrompt
+	}
+
+	if logCtx := c.logger.GetLogContext(); logCtx != "" {
+		currentPrompt += fmt.Sprintf("%s\n%s\n%s", logCtx, currentPrompt, GeneralResearchActivities)
+	}
+	return currentPrompt
+}
+
 func (c *CoreConfig) Research(prompt, modelID, glob string) *ResearchActions {
 	ctx := context.Background()
 
@@ -117,10 +128,7 @@ func (c *CoreConfig) Research(prompt, modelID, glob string) *ResearchActions {
 	if err != nil {
 		return nil
 	}
-	promptToSendBedrock += addedContext
-	if logCtx := c.logger.GetLogContext(); logCtx != "" {
-		promptToSendBedrock += fmt.Sprintf("%s\n%s\n%s", logCtx, prompt, GeneralResearchActivities)
-	}
+	promptToSendBedrock = c.addLogContextToPrompt(addedContext)
 
 	req := aws.BedrockRequest{
 		Messages: []aws.BedrockMessage{

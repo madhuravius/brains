@@ -81,10 +81,7 @@ func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) error 
 func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool {
 	pterm.Info.Println("starting ask operation")
 	ctx := context.Background()
-	promptToSendBedrock := prompt
-	if logCtx := c.logger.GetLogContext(); logCtx != "" {
-		promptToSendBedrock = fmt.Sprintf("%s\n\n%s", logCtx, prompt)
-	}
+	promptToSendBedrock := c.addLogContextToPrompt(prompt)
 	if personaInstructions != "" {
 		prompt = fmt.Sprintf("%s%s", personaInstructions, prompt)
 	}

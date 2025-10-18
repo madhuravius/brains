@@ -23,9 +23,10 @@ type toolsConfig struct {
 }
 
 type CoreConfig struct {
-	toolsConfig *toolsConfig
-	awsImpl     awsConfig.AWSImpl
-	logger      brainsConfig.SimpleLogger
+	awsImpl      awsConfig.AWSImpl
+	brainsConfig brainsConfig.BrainsConfigImpl
+	logger       brainsConfig.SimpleLogger
+	toolsConfig  *toolsConfig
 }
 
 type LLMRequest struct {
