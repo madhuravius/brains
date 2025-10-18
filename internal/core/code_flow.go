@@ -142,12 +142,11 @@ func (c *CoreConfig) ExecuteEditCode(data *CodeModelResponse) bool {
 func (c *CoreConfig) DetermineCodeChanges(prompt, personaInstructions, modelID, glob string) *CodeModelResponse {
 	ctx := context.Background()
 
-	addedContext, err := c.enrichWithGlob(glob)
+	promptToSendBedrock, err := c.enrichWithGlob(glob)
 	if err != nil {
 		return nil
 	}
-	promptToSendBedrock := addedContext
-	promptToSendBedrock = c.addLogContextToPrompt(fmt.Sprintf("%s\n%s", prompt, CoderPromptPostProcess))
+	promptToSendBedrock = c.addLogContextToPrompt(fmt.Sprintf("%s\n%s\n%s", promptToSendBedrock, prompt, CoderPromptPostProcess))
 
 	req := aws.BedrockRequest{
 		Messages: []aws.BedrockMessage{
