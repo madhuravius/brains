@@ -6,13 +6,11 @@ type FileSystemConfig struct {
 	commonTools tools.CommonToolsImpl
 }
 
-func NewFileSystemConfig() (*FileSystemConfig, error) {
-	ignorePatterns, err := tools.LoadGitignore(".gitignore")
-	if err != nil {
-		return nil, err
-	}
-
-	return &FileSystemConfig{
-		commonTools: tools.NewCommonToolsConfig(ignorePatterns),
-	}, nil
+type FileSystemImpl interface {
+	CreateFile(filePath, fileContents string) error
+	DeleteFile(filePath string) error
+	GetFileContents(path string) (string, error)
+	GetFileTree(root string) (string, error)
+	SetContextFromGlob(pattern string) (string, error)
+	UpdateFile(filePath, oldContent, newContent string, interactive bool) (bool, error)
 }

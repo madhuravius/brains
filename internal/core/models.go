@@ -19,7 +19,7 @@ type CoreImpl interface {
 }
 
 type toolsConfig struct {
-	fsToolConfig *file_system.FileSystemConfig
+	fsToolConfig file_system.FileSystemImpl
 }
 
 type CoreConfig struct {
