@@ -10,7 +10,15 @@ import (
 	"github.com/madhuravius/brains/internal/tools"
 )
 
-func (r *RepoMap) ToPrompt() string {
+func (r *RepoMapConfig) GetFiles() []*FileMap {
+	return r.Files
+}
+
+func (r *RepoMapConfig) GetFileCount() int {
+	return len(r.Files)
+}
+
+func (r *RepoMapConfig) ToPrompt() string {
 	var sb strings.Builder
 	for _, f := range r.Files {
 		sb.WriteString(fmt.Sprintf("### File: %s\n", f.Path))
@@ -43,38 +51,37 @@ func (r *RepoMap) ToPrompt() string {
 	return sb.String()
 }
 
-func BuildRepoMap(ctx context.Context, repoRoot string) (*RepoMap, error) {
-	var repo RepoMap
-	repo.Path = repoRoot
+func (r *RepoMapConfig) BuildRepoMap(ctx context.Context, repoRoot string) error {
+	r.Path = repoRoot
 
 	ignoreList, err := tools.LoadGitignore(fmt.Sprintf("%s/.gitignore", repoRoot))
 	if err != nil {
-		return nil, err
+		return err
 	}
-	repo.commonTools = tools.NewCommonToolsConfig(ignoreList)
+	r.commonTools = tools.NewCommonToolsConfig(ignoreList)
 
 	err = filepath.Walk(repoRoot, func(path string, info os.FileInfo, _ error) error {
 		if info.IsDir() || !isSourceFile(path) {
 			return nil
 		}
 
-		if repo.commonTools.IsIgnored(path) {
+		if r.commonTools.IsIgnored(path) {
 			return nil
 		}
 
 		lang := detectLanguage(path)
-		fileMap, err := ParseFile(ctx, path, lang)
+		fileMap, err := r.ParseFile(ctx, path, lang)
 		if err != nil {
 			return err
 		}
-		repo.Files = append(repo.Files, fileMap)
+		r.Files = append(r.Files, fileMap)
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &repo, nil
+	return nil
 }
 
 func isSourceFile(path string) bool {

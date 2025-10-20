@@ -20,7 +20,7 @@ import (
 	"github.com/smacker/go-tree-sitter/typescript/typescript"
 )
 
-func ParseFile(ctx context.Context, path, lang string) (*FileMap, error) {
+func (r *RepoMapConfig) ParseFile(ctx context.Context, path, lang string) (*FileMap, error) {
 	code, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err

@@ -105,7 +105,7 @@ func generateRepoMap[T RepoMappable](
 	t T,
 ) askDataDAGFunction {
 	return func(inputs map[string]string) (string, error) {
-		repoMap, err := repo_map.BuildRepoMap(ctx, "./")
+		repoMap, err := repo_map.NewRepoMapConfig(ctx, "./")
 		if err != nil {
 			pterm.Error.Printf("failed to load repo map: %v\n", err)
 			return "", err
@@ -113,7 +113,7 @@ func generateRepoMap[T RepoMappable](
 
 		t.SetRepoMapContext(repoMap.ToPrompt())
 
-		pterm.Success.Printfln("repoMap successfully constructed: %d files", len(repoMap.Files))
+		pterm.Success.Printfln("repoMap successfully constructed: %d files", repoMap.GetFileCount())
 		return "", nil
 	}
 }

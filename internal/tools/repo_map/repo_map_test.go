@@ -18,21 +18,15 @@ func mustContain(t *testing.T, s, sub string) {
 	}
 }
 
-func renderSingleFile(t *testing.T, lang, relpath string) string {
+func renderSingleFile(t *testing.T, relpath string) string {
 	t.Helper()
 	ctx := context.Background()
 	root := "test_fixtures"
 	path := filepath.Join(root, relpath)
 
-	fm, err := repo_map.ParseFile(ctx, path, lang)
-	if err != nil {
-		t.Fatalf("ParseFile(%q, %q) error: %v", path, lang, err)
-	}
-	r := repo_map.RepoMap{
-		Path:  filepath.Dir(path),
-		Files: []*repo_map.FileMap{fm},
-	}
-	out := r.ToPrompt()
+	repoMapCfg, err := repo_map.NewRepoMapConfig(ctx, path)
+	assert.NoError(t, err)
+	out := repoMapCfg.ToPrompt()
 	mustContain(t, out, fmt.Sprintf("### File: %s", path))
 	return out
 }
@@ -40,7 +34,7 @@ func renderSingleFile(t *testing.T, lang, relpath string) string {
 func TestRepoMap(t *testing.T) {
 	ctx := context.Background()
 	path := "test_fixtures"
-	repoMap, err := repo_map.BuildRepoMap(ctx, path)
+	repoMap, err := repo_map.NewRepoMapConfig(ctx, path)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, repoMap)
@@ -49,28 +43,28 @@ func TestRepoMap(t *testing.T) {
 func TestRepoMapGitignore(t *testing.T) {
 	ctx := context.Background()
 	path := "test_fixtures/test_ignores"
-	repoMap, err := repo_map.BuildRepoMap(ctx, path)
+	repoMap, err := repo_map.NewRepoMapConfig(ctx, path)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, repoMap)
-	assert.Equal(t, len(repoMap.Files), 1)
-	assert.Contains(t, repoMap.Files[0].Path, "1.py")
+	assert.Equal(t, repoMap.GetFileCount(), 1)
+	assert.Contains(t, repoMap.GetFiles()[0].Path, "1.py")
 }
 
 func TestRepoMapGitignoreWithDepth(t *testing.T) {
 	ctx := context.Background()
 	path := "test_fixtures/test_ignores_nodejs"
-	repoMap, err := repo_map.BuildRepoMap(ctx, path)
+	repoMap, err := repo_map.NewRepoMapConfig(ctx, path)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, repoMap)
-	assert.Equal(t, len(repoMap.Files), 1)
-	assert.Contains(t, repoMap.Files[0].Path, "1.ts")
+	assert.Equal(t, repoMap.GetFileCount(), 1)
+	assert.Contains(t, repoMap.GetFiles()[0].Path, "1.ts")
 }
 
 func TestGo_DocsAndParams(t *testing.T) {
 	t.Parallel()
-	out := renderSingleFile(t, "go", "go/sample.go")
+	out := renderSingleFile(t, "go")
 
 	// Symbols
 	assert.Contains(t, out, "- struct Person")
@@ -91,7 +85,7 @@ func TestGo_DocsAndParams(t *testing.T) {
 
 func TestPython_DocsAndParams(t *testing.T) {
 	t.Parallel()
-	out := renderSingleFile(t, "python", "python/sample.py")
+	out := renderSingleFile(t, "python")
 
 	// Symbols
 	assert.Contains(t, out, "- class Person")
@@ -107,7 +101,7 @@ func TestPython_DocsAndParams(t *testing.T) {
 
 func TestJavaScript_DocsAndParams(t *testing.T) {
 	t.Parallel()
-	out := renderSingleFile(t, "javascript", "javascript/sample.js")
+	out := renderSingleFile(t, "javascript")
 
 	// Symbols
 	assert.Contains(t, out, "- function greet")
@@ -125,7 +119,7 @@ func TestJavaScript_DocsAndParams(t *testing.T) {
 
 func TestTypeScript_DocsAndParams(t *testing.T) {
 	t.Parallel()
-	out := renderSingleFile(t, "typescript", "typescript/sample.ts")
+	out := renderSingleFile(t, "typescript")
 
 	// Symbols
 	assert.Contains(t, out, "- function doThing")
@@ -143,7 +137,7 @@ func TestTypeScript_DocsAndParams(t *testing.T) {
 
 func TestJava_DocsAndParams(t *testing.T) {
 	t.Parallel()
-	out := renderSingleFile(t, "java", "java/sample.java")
+	out := renderSingleFile(t, "java")
 
 	// Symbols
 	assert.Contains(t, out, "- class Service")
@@ -165,7 +159,7 @@ func TestJava_DocsAndParams(t *testing.T) {
 
 func TestCPP_DocsAndParams(t *testing.T) {
 	t.Parallel()
-	out := renderSingleFile(t, "cpp", "cpp/sample.cpp")
+	out := renderSingleFile(t, "cpp")
 
 	// Symbols
 	assert.Contains(t, out, "- function add")
@@ -180,7 +174,7 @@ func TestCPP_DocsAndParams(t *testing.T) {
 
 func TestCSharp_DocsAndParams(t *testing.T) {
 	t.Parallel()
-	out := renderSingleFile(t, "csharp", "csharp/sample.cs")
+	out := renderSingleFile(t, "csharp")
 
 	// Symbols
 	assert.Contains(t, out, "- interface IRepo")
@@ -201,7 +195,7 @@ func TestCSharp_DocsAndParams(t *testing.T) {
 
 func TestRuby_DocsAndParams(t *testing.T) {
 	t.Parallel()
-	out := renderSingleFile(t, "ruby", "ruby/sample.rb")
+	out := renderSingleFile(t, "ruby")
 
 	// Symbols
 	assert.Contains(t, out, "- class Person")
@@ -222,7 +216,7 @@ func TestRuby_DocsAndParams(t *testing.T) {
 
 func TestPHP_DocsAndParams(t *testing.T) {
 	t.Parallel()
-	out := renderSingleFile(t, "php", "php/sample.php")
+	out := renderSingleFile(t, "php")
 
 	// Symbols
 	assert.Contains(t, out, "- function greet")
@@ -243,7 +237,7 @@ func TestPHP_DocsAndParams(t *testing.T) {
 
 func TestRust_DocsAndParams(t *testing.T) {
 	t.Parallel()
-	out := renderSingleFile(t, "rust", "rust/sample.rs")
+	out := renderSingleFile(t, "rust")
 
 	// Symbols
 	assert.Contains(t, out, "- struct Person")
@@ -265,7 +259,7 @@ func TestRust_DocsAndParams(t *testing.T) {
 
 func TestElixir_DocsAndParams(t *testing.T) {
 	t.Parallel()
-	out := renderSingleFile(t, "elixir", "elixir/sample.ex")
+	out := renderSingleFile(t, "elixir")
 
 	assert.Contains(t, out, "- module Greeter")
 	assert.Contains(t, out, "Doc: Greeter module docs.")

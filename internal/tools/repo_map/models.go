@@ -1,6 +1,21 @@
 package repo_map
 
-import "github.com/madhuravius/brains/internal/tools"
+import (
+	"context"
+
+	"github.com/madhuravius/brains/internal/tools"
+)
+
+type RepoMapConfig struct {
+	RepoMap
+}
+type RepoMapImpl interface {
+	BuildRepoMap(ctx context.Context, repoRoot string) error
+	GetFileCount() int
+	GetFiles() []*FileMap
+	ParseFile(ctx context.Context, path, lang string) (*FileMap, error)
+	ToPrompt() string
+}
 
 type RepoMap struct {
 	Path  string     `json:"path"`
