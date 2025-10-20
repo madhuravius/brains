@@ -26,13 +26,16 @@ func TestFetchWebContextSuccess(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	txt, err := browser.FetchWebContext(context.Background(), srv.URL)
+	b, err := browser.NewBrowserConfig()
+	assert.NoError(t, err)
+	txt, err := b.FetchWebContext(context.Background(), srv.URL)
 	assert.NoError(t, err)
 	assert.Contains(t, txt, "Hello World from Test")
 }
 
 func TestFetchWebContextInvalidURL(t *testing.T) {
 	assert.Panics(t, func() {
-		_, _ = browser.FetchWebContext(context.Background(), "http://[::1]:invalid")
+		b, _ := browser.NewBrowserConfig()
+		_, _ = b.FetchWebContext(context.Background(), "http://[::1]:invalid")
 	})
 }

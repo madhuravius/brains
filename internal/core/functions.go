@@ -8,7 +8,6 @@ import (
 	"github.com/pterm/pterm"
 
 	"github.com/madhuravius/brains/internal/aws"
-	"github.com/madhuravius/brains/internal/tools/browser"
 	"github.com/madhuravius/brains/internal/tools/repo_map"
 )
 
@@ -53,7 +52,7 @@ func generateResearchRun[T Researchable](
 		researchActions := coreConfig.Research(req.Prompt, req.ModelID, req.Glob)
 
 		for _, url := range researchActions.UrlsRecommended {
-			data, err := browser.FetchWebContext(ctx, url)
+			data, err := coreConfig.toolsConfig.browserToolConfig.FetchWebContext(ctx, url)
 			if err != nil {
 				pterm.Error.Printf("failed to load url: %v\n", err)
 				return "", err

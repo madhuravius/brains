@@ -5,6 +5,7 @@ import (
 
 	awsConfig "github.com/madhuravius/brains/internal/aws"
 	brainsConfig "github.com/madhuravius/brains/internal/config"
+	"github.com/madhuravius/brains/internal/tools/browser"
 	"github.com/madhuravius/brains/internal/tools/file_system"
 )
 
@@ -19,7 +20,8 @@ type CoreImpl interface {
 }
 
 type toolsConfig struct {
-	fsToolConfig file_system.FileSystemImpl
+	browserToolConfig browser.BrowserImpl
+	fsToolConfig      file_system.FileSystemImpl
 }
 
 type CoreConfig struct {

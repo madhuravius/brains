@@ -4,32 +4,19 @@ import (
 	"context"
 	"fmt"
 	neturl "net/url"
-	"os"
 	"regexp"
 	"strings"
 
 	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-shiori/go-readability"
 	"github.com/pterm/pterm"
 )
 
-func FetchWebContext(ctx context.Context, url string) (string, error) {
-	l := launcher.New().Headless(true)
-
-	if os.Getenv("DISABLE_ROD_SANDBOX") == "true" {
-		l.Set("no-sandbox").
-			Set("disable-setuid-sandbox").
-			Set("disable-dev-shm-usage").
-			Set("disable-gpu")
-	}
-
-	pterm.Info.Printfln("opening browser to view url: %s", url)
-
-	rodUrl := l.MustLaunch()
-	browser := rod.New().ControlURL(rodUrl).MustConnect()
+func (b *BrowserConfig) FetchWebContext(ctx context.Context, url string) (string, error) {
+	browser := rod.New().ControlURL(b.rodUrl).MustConnect()
 	defer browser.MustClose()
 
+	pterm.Info.Printfln("opening browser to view url: %s", url)
 	page := browser.MustPage(url)
 	page.MustWaitLoad()
 
