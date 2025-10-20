@@ -41,6 +41,9 @@ type Researchable interface {
 	SetFileMapData(filePath, filePathData string)
 	SetResearchData(url, data string)
 }
+type FileListable interface {
+	SetFileListContext(string)
+}
 type RepoMappable interface {
 	SetRepoMapContext(repoMap string)
 }
@@ -50,7 +53,8 @@ type ResearchData map[string]string
 type CommonData struct {
 	ResearchData
 	FileMapData
-	RepoMapContext string
+	FileListContext string
+	RepoMapContext  string
 }
 
 type AskData struct {

@@ -22,6 +22,10 @@ func (c *CommonData) SetRepoMapContext(repoMap string) {
 	c.RepoMapContext = repoMap
 }
 
+func (c *CommonData) SetFileListContext(fileListContext string) {
+	c.FileListContext = fileListContext
+}
+
 func (c *CommonData) SetFileMapData(filePath, fileMapData string) {
 	if c.FileMapData == nil {
 		c.FileMapData = make(map[string]string)
@@ -29,13 +33,16 @@ func (c *CommonData) SetFileMapData(filePath, fileMapData string) {
 	c.FileMapData[filePath] = fileMapData
 }
 
-func (d *CommonData) generateInitialContextRun() string {
+func (c *CommonData) generateInitialContextRun() string {
 	additionalContext := ""
-	for url, data := range d.ResearchData {
+	for url, data := range c.ResearchData {
 		additionalContext += "------ scraped content from: " + url + "\n\n\n" + data + "\n\n\n" + "------------"
 	}
-	for filePath, fileContents := range d.FileMapData {
+	for filePath, fileContents := range c.FileMapData {
 		additionalContext += "----- requested file content: " + filePath + "\n\n\n" + fileContents + "\n\n\n" + "------------"
+	}
+	if c.FileListContext != "" {
+		additionalContext += "----- requested file list context: \n" + c.FileListContext
 	}
 
 	return additionalContext
@@ -72,6 +79,23 @@ func generateResearchRun[T Researchable](
 		}
 		pterm.Success.Println("research - #2 - loaded requested files")
 
+		return "", nil
+	}
+}
+
+func generateFileList[T FileListable](
+	coreConfig *CoreConfig,
+	t T,
+) askDataDAGFunction {
+	return func(inputs map[string]string) (string, error) {
+		fileList, err := coreConfig.toolsConfig.fsToolConfig.GetFileTree("./")
+		if err != nil {
+			pterm.Error.Printf("failed to load file list: %v\n", err)
+			return "", err
+		}
+		t.SetFileListContext(fileList)
+
+		pterm.Success.Printfln("fileList successfully constructed")
 		return "", nil
 	}
 }

@@ -52,6 +52,19 @@ func (c *CoreConfig) CodeFlow(ctx context.Context, llmRequest *LLMRequest) error
 		return err
 	}
 
+	fileListVertex := &dag.Vertex[string, *CodeData]{
+		Name: "fileList",
+		DAG:  codeDAG,
+		Run:  generateFileList(c, codeData),
+	}
+	if !c.brainsConfig.GetConfig().ContextConfig.SendFileList {
+		fileListVertex.SkipConfig = &dag.SkipVertexConfig{
+			Enabled: true,
+			Reason:  "send_file_list flag is disabled",
+		}
+	}
+	_ = codeDAG.AddVertex(fileListVertex)
+
 	repoMapVertex := &dag.Vertex[string, *CodeData]{
 		Name: "repoMap",
 		DAG:  codeDAG,
@@ -88,6 +101,7 @@ func (c *CoreConfig) CodeFlow(ctx context.Context, llmRequest *LLMRequest) error
 	}
 	_ = codeDAG.AddVertex(executeCodeEditsVertex)
 
+	codeDAG.Connect(fileListVertex.Name, researchVertex.Name)
 	codeDAG.Connect(repoMapVertex.Name, researchVertex.Name)
 	codeDAG.Connect(researchVertex.Name, determineCodeChangesVertex.Name)
 	codeDAG.Connect(determineCodeChangesVertex.Name, executeCodeEditsVertex.Name)

@@ -17,7 +17,7 @@ func (a *AskData) generateAskFunction(coreConfig *CoreConfig, req *LLMRequest) a
 	return func(inputs map[string]string) (string, error) {
 		coreConfig.Ask(
 			a.RepoMapContext+"\n\nAbove is a mapping of the current repository\n\n"+
-				additionalContext+"\n\n\nwere visited above with content if available, you can now return to answering the prompt.\n\n\n"+
+				additionalContext+"\n\n\nis hydrated as initial context, you can now return to answering the prompt.\n\n\n"+
 				req.Prompt,
 			req.PersonaInstructions,
 			req.ModelID,
@@ -41,6 +41,19 @@ func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) error 
 		os.Exit(1)
 	}
 
+	fileListVertex := &dag.Vertex[string, *AskData]{
+		Name: "fileList",
+		DAG:  askDAG,
+		Run:  generateFileList(c, askData),
+	}
+	if !c.brainsConfig.GetConfig().ContextConfig.SendFileList {
+		fileListVertex.SkipConfig = &dag.SkipVertexConfig{
+			Enabled: true,
+			Reason:  "send_file_list flag is disabled",
+		}
+	}
+	_ = askDAG.AddVertex(fileListVertex)
+
 	repoMapVertex := &dag.Vertex[string, *AskData]{
 		Name: "repoMap",
 		DAG:  askDAG,
@@ -52,7 +65,6 @@ func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) error 
 			Reason:  "send_all_tags flag is disabled",
 		}
 	}
-
 	_ = askDAG.AddVertex(repoMapVertex)
 
 	researchVertex := &dag.Vertex[string, *AskData]{
@@ -71,6 +83,7 @@ func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) error 
 	}
 	_ = askDAG.AddVertex(askVertex)
 
+	askDAG.Connect(fileListVertex.Name, researchVertex.Name)
 	askDAG.Connect(repoMapVertex.Name, researchVertex.Name)
 	askDAG.Connect(researchVertex.Name, askVertex.Name)
 	pterm.Success.Println("askDAG beginning execution, planned flow printed")
