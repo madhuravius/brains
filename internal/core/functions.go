@@ -33,6 +33,10 @@ func (c *CommonData) SetFileMapData(filePath, fileMapData string) {
 	c.FileMapData[filePath] = fileMapData
 }
 
+func (c *CommonData) SetLogSummaryContext(logSummary string) {
+	c.LogSummaryContext = logSummary
+}
+
 func (c *CommonData) generateInitialContextRun() string {
 	additionalContext := ""
 	for url, data := range c.ResearchData {
@@ -53,7 +57,7 @@ func generateResearchRun[T Researchable](
 	ctx context.Context,
 	req *LLMRequest,
 	t T,
-) askDataDAGFunction {
+) commonDataDAGFunction {
 	return func(inputs map[string]string) (string, error) {
 		pterm.Info.Println("starting research operation")
 		researchActions := coreConfig.Research(req.Prompt, req.ModelID, req.Glob)
@@ -83,10 +87,33 @@ func generateResearchRun[T Researchable](
 	}
 }
 
+func generateLogSummary[T LogSummarizable](coreConfig *CoreConfig, llmRequest *LLMRequest, ctx context.Context, t T) commonDataDAGFunction {
+	return func(inputs map[string]string) (string, error) {
+		logCtx := coreConfig.logger.GetLogContext()
+
+		logSummary, usage, err := coreConfig.generateBedrockTextResponse(
+			ctx,
+			fmt.Sprintf(LogSummary, llmRequest.Prompt, logCtx),
+			coreConfig.brainsConfig.GetConfig().Model,
+		)
+		if err != nil {
+			return "", err
+		}
+
+		coreConfig.awsImpl.PrintCost(usage, coreConfig.brainsConfig.GetConfig().Model)
+		coreConfig.awsImpl.PrintContext(usage, coreConfig.brainsConfig.GetConfig().Model)
+
+		t.SetLogSummaryContext(logSummary)
+
+		pterm.Success.Printfln("log summary successfully constructed")
+		return "", nil
+	}
+}
+
 func generateFileList[T FileListable](
 	coreConfig *CoreConfig,
 	t T,
-) askDataDAGFunction {
+) commonDataDAGFunction {
 	return func(inputs map[string]string) (string, error) {
 		fileList, err := coreConfig.toolsConfig.fsToolConfig.GetFileTree("./")
 		if err != nil {
@@ -103,7 +130,7 @@ func generateFileList[T FileListable](
 func generateRepoMap[T RepoMappable](
 	ctx context.Context,
 	t T,
-) askDataDAGFunction {
+) commonDataDAGFunction {
 	return func(inputs map[string]string) (string, error) {
 		repoMap, err := repo_map.NewRepoMapConfig(ctx, "./")
 		if err != nil {
@@ -188,6 +215,18 @@ func (c *CoreConfig) Research(prompt, modelID, glob string) *ResearchActions {
 
 func (c *CoreConfig) ValidateBedrockConfiguration(modelID string) bool {
 	ctx := context.Background()
+	_, usage, err := c.generateBedrockTextResponse(ctx, HealthCheck, modelID)
+	if err != nil {
+		return false
+	}
+
+	c.awsImpl.PrintCost(usage, modelID)
+	c.awsImpl.PrintContext(usage, modelID)
+
+	return true
+}
+
+func (c *CoreConfig) generateBedrockTextResponse(ctx context.Context, request, modelID string) (response string, usage map[string]any, err error) {
 	simpleReq := aws.BedrockRequest{
 		Messages: []aws.BedrockMessage{
 			{
@@ -195,7 +234,7 @@ func (c *CoreConfig) ValidateBedrockConfiguration(modelID string) bool {
 				Content: []aws.BedrockContent{
 					{
 						Type: "text",
-						Text: "This is a health check via API call to make sure a connection to this LLM is established. Please reply with a short three to five word affirmation if you are able to interpret this message that the health check is successful.",
+						Text: request,
 					},
 				},
 			},
@@ -204,19 +243,21 @@ func (c *CoreConfig) ValidateBedrockConfiguration(modelID string) bool {
 	c.logger.LogMessage("[REQUEST] \n health‑check prompt")
 	respBody, err := c.awsImpl.CallAWSBedrock(ctx, modelID, simpleReq)
 	if err != nil {
-		pterm.Error.Printf("InvokeModel error: %v\n", err)
-		return false
+		pterm.Error.Printf("invokeModel error: %v\n", err)
+		return "", nil, err
 	}
 	var data aws.ChatResponse
 	if err := json.Unmarshal(respBody, &data); err != nil {
-		pterm.Error.Printf("Json Unmarshal error (when parsing Bedrock Body): %v\n", err)
-		return false
+		pterm.Error.Printf("json Unmarshal error (when parsing Bedrock Body): %v\n", err)
+		return "", nil, err
 	}
-	for _, choice := range data.Choices {
-		c.awsImpl.PrintBedrockMessage(choice.Message.Content)
-		c.logger.LogMessage("[RESPONSE] \n " + choice.Message.Content)
+
+	if len(data.Choices) == 0 {
+		pterm.Warning.Printf("no data returned from message response in generateBedrockTextResponse")
+		return "", nil, nil
 	}
-	c.awsImpl.PrintCost(data.Usage, modelID)
-	c.awsImpl.PrintContext(data.Usage, modelID)
-	return true
+
+	c.awsImpl.PrintBedrockMessage(data.Choices[0].Message.Content)
+	c.logger.LogMessage("[RESPONSE] \n " + data.Choices[0].Message.Content)
+	return data.Choices[0].Message.Content, data.Usage, nil
 }

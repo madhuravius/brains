@@ -54,6 +54,19 @@ func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) error 
 	}
 	_ = askDAG.AddVertex(fileListVertex)
 
+	logSummaryVertex := &dag.Vertex[string, *AskData]{
+		Name: "logSummary",
+		DAG:  askDAG,
+		Run:  generateLogSummary(c, llmRequest, ctx, askData),
+	}
+	if !c.brainsConfig.GetConfig().ContextConfig.SummarizeLogs {
+		logSummaryVertex.SkipConfig = &dag.SkipVertexConfig{
+			Enabled: true,
+			Reason:  "summarize_logs flag is disabled",
+		}
+	}
+	_ = askDAG.AddVertex(logSummaryVertex)
+
 	repoMapVertex := &dag.Vertex[string, *AskData]{
 		Name: "repoMap",
 		DAG:  askDAG,
@@ -84,6 +97,7 @@ func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) error 
 	_ = askDAG.AddVertex(askVertex)
 
 	askDAG.Connect(fileListVertex.Name, researchVertex.Name)
+	askDAG.Connect(logSummaryVertex.Name, researchVertex.Name)
 	askDAG.Connect(repoMapVertex.Name, researchVertex.Name)
 	askDAG.Connect(researchVertex.Name, askVertex.Name)
 	pterm.Success.Println("askDAG beginning execution, planned flow printed")

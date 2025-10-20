@@ -47,15 +47,20 @@ type FileListable interface {
 type RepoMappable interface {
 	SetRepoMapContext(repoMap string)
 }
+type LogSummarizable interface {
+	SetLogSummaryContext(string)
+}
 type FileMapData map[string]string
 type ResearchData map[string]string
 
 type CommonData struct {
 	ResearchData
 	FileMapData
-	FileListContext string
-	RepoMapContext  string
+	FileListContext   string
+	RepoMapContext    string
+	LogSummaryContext string
 }
+type commonDataDAGFunction func(inputs map[string]string) (string, error)
 
 type AskData struct {
 	*CommonData

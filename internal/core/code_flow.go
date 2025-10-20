@@ -65,6 +65,19 @@ func (c *CoreConfig) CodeFlow(ctx context.Context, llmRequest *LLMRequest) error
 	}
 	_ = codeDAG.AddVertex(fileListVertex)
 
+	logSummaryVertex := &dag.Vertex[string, *CodeData]{
+		Name: "logSummary",
+		DAG:  codeDAG,
+		Run:  generateLogSummary(c, llmRequest, ctx, codeData),
+	}
+	if !c.brainsConfig.GetConfig().ContextConfig.SummarizeLogs {
+		logSummaryVertex.SkipConfig = &dag.SkipVertexConfig{
+			Enabled: true,
+			Reason:  "summarize_logs flag is disabled",
+		}
+	}
+	_ = codeDAG.AddVertex(logSummaryVertex)
+
 	repoMapVertex := &dag.Vertex[string, *CodeData]{
 		Name: "repoMap",
 		DAG:  codeDAG,
@@ -102,6 +115,7 @@ func (c *CoreConfig) CodeFlow(ctx context.Context, llmRequest *LLMRequest) error
 	_ = codeDAG.AddVertex(executeCodeEditsVertex)
 
 	codeDAG.Connect(fileListVertex.Name, researchVertex.Name)
+	codeDAG.Connect(logSummaryVertex.Name, researchVertex.Name)
 	codeDAG.Connect(repoMapVertex.Name, researchVertex.Name)
 	codeDAG.Connect(researchVertex.Name, determineCodeChangesVertex.Name)
 	codeDAG.Connect(determineCodeChangesVertex.Name, executeCodeEditsVertex.Name)
