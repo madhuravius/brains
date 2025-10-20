@@ -7,11 +7,12 @@ import (
 
 	"github.com/charmbracelet/glamour"
 	"github.com/google/go-github/v76/github"
+	"github.com/muesli/termenv"
+	"github.com/pterm/pterm"
+
 	"github.com/madhuravius/brains/internal/aws"
 	"github.com/madhuravius/brains/internal/config"
 	"github.com/madhuravius/brains/internal/core"
-	"github.com/muesli/termenv"
-	"github.com/pterm/pterm"
 )
 
 const (
