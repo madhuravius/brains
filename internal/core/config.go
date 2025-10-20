@@ -7,18 +7,26 @@ import (
 
 	"github.com/madhuravius/brains/internal/aws"
 	brainsConfig "github.com/madhuravius/brains/internal/config"
+	"github.com/madhuravius/brains/internal/tools/browser"
 	"github.com/madhuravius/brains/internal/tools/file_system"
 )
 
-func NewCoreConfig(awsConfig aws.AWSImpl) CoreImpl {
+func NewCoreConfig(awsConfig aws.AWSImpl, brainsConfig brainsConfig.BrainsConfigImpl) CoreImpl {
 	fsToolConfig, err := file_system.NewFileSystemConfig()
 	if err != nil {
 		pterm.Error.Printf("Failed to load fs tool configuration: %v\n", err)
 		os.Exit(1)
 	}
+	browserToolConfig, err := browser.NewBrowserConfig()
+	if err != nil {
+		pterm.Error.Printf("Failed to load browser tool configuration: %v\n", err)
+		os.Exit(1)
+	}
 	return &CoreConfig{
+		brainsConfig: brainsConfig,
 		toolsConfig: &toolsConfig{
-			fsToolConfig: fsToolConfig,
+			fsToolConfig:      fsToolConfig,
+			browserToolConfig: browserToolConfig,
 		},
 		awsImpl: awsConfig,
 	}

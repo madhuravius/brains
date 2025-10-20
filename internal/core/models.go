@@ -5,6 +5,7 @@ import (
 
 	awsConfig "github.com/madhuravius/brains/internal/aws"
 	brainsConfig "github.com/madhuravius/brains/internal/config"
+	"github.com/madhuravius/brains/internal/tools/browser"
 	"github.com/madhuravius/brains/internal/tools/file_system"
 )
 
@@ -19,13 +20,15 @@ type CoreImpl interface {
 }
 
 type toolsConfig struct {
-	fsToolConfig *file_system.FileSystemConfig
+	browserToolConfig browser.BrowserImpl
+	fsToolConfig      file_system.FileSystemImpl
 }
 
 type CoreConfig struct {
-	toolsConfig *toolsConfig
-	awsImpl     awsConfig.AWSImpl
-	logger      brainsConfig.SimpleLogger
+	awsImpl      awsConfig.AWSImpl
+	brainsConfig brainsConfig.BrainsConfigImpl
+	logger       brainsConfig.SimpleLogger
+	toolsConfig  *toolsConfig
 }
 
 type LLMRequest struct {
@@ -38,25 +41,41 @@ type Researchable interface {
 	SetFileMapData(filePath, filePathData string)
 	SetResearchData(url, data string)
 }
+type FileListable interface {
+	SetFileListContext(string)
+}
 type RepoMappable interface {
 	SetRepoMapContext(repoMap string)
 }
+type LogSummarizable interface {
+	SetLogSummaryContext(string)
+}
 type FileMapData map[string]string
 type ResearchData map[string]string
-type AskData struct {
+
+type CommonData struct {
 	ResearchData
 	FileMapData
-	RepoMapContext string
+	FileListContext   string
+	RepoMapContext    string
+	LogSummaryContext string
+}
+type commonDataDAGFunction func(inputs map[string]string) (string, error)
+
+type AskData struct {
+	*CommonData
 }
 type askDataDAGFunction func(inputs map[string]string) (string, error)
 
 type CodeData struct {
-	ResearchData
-	FileMapData
-	RepoMapContext    string
+	*CommonData
 	CodeModelResponse *CodeModelResponse
 }
 type codeDataDAGFunction func(inputs map[string]string) (string, error)
+
+type InitialContextSettable interface {
+	generateInitialContextRun() string
+}
 
 type Hydratable interface {
 	IsHydrated() bool

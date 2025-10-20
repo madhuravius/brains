@@ -10,7 +10,7 @@ import (
 
 func main() {
 	ctx := context.Background()
-	repoMap, err := repo_map.BuildRepoMap(ctx, "./internal/tools/repo_map/test_fixtures")
+	repoMap, err := repo_map.NewRepoMapConfig(ctx, "./internal/tools/repo_map/test_fixtures")
 	if err != nil {
 		pterm.Fatal.Printfln("repo_map.BuildRepoMap: %v", err)
 	}

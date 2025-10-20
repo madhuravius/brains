@@ -33,7 +33,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	coreConfig := core.NewCoreConfig(awsConfig)
+	coreConfig := core.NewCoreConfig(awsConfig, brainsConfig)
 	coreConfig.SetLogger(brainsConfig.GetConfig())
 
 	personaInstructions := brainsConfig.GetPersonaInstructions("dev")

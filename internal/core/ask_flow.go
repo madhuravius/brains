@@ -12,36 +12,12 @@ import (
 	"github.com/madhuravius/brains/internal/dag"
 )
 
-func (a *AskData) SetResearchData(url, data string) {
-	if a.ResearchData == nil {
-		a.ResearchData = make(map[string]string)
-	}
-	a.ResearchData[url] = data
-}
-
-func (a *AskData) SetRepoMapContext(repoMap string) {
-	a.RepoMapContext = repoMap
-}
-
-func (a *AskData) SetFileMapData(filePath, fileMapData string) {
-	if a.FileMapData == nil {
-		a.FileMapData = make(map[string]string)
-	}
-	a.FileMapData[filePath] = fileMapData
-}
-
 func (a *AskData) generateAskFunction(coreConfig *CoreConfig, req *LLMRequest) askDataDAGFunction {
-	additionalContext := ""
-	for url, data := range a.ResearchData {
-		additionalContext += "------ scraped content from: " + url + "\n\n\n" + data + "\n\n\n" + "------------"
-	}
-	for filePath, fileContents := range a.FileMapData {
-		additionalContext += "----- requested file content: " + filePath + "\n\n\n" + fileContents + "\n\n\n" + "------------"
-	}
+	additionalContext := a.generateInitialContextRun()
 	return func(inputs map[string]string) (string, error) {
 		coreConfig.Ask(
 			a.RepoMapContext+"\n\nAbove is a mapping of the current repository\n\n"+
-				additionalContext+"\n\n\nwere visited above with content if available, you can now return to answering the prompt.\n\n\n"+
+				additionalContext+"\n\n\nis hydrated as initial context, you can now return to answering the prompt.\n\n\n"+
 				req.Prompt,
 			req.PersonaInstructions,
 			req.ModelID,
@@ -54,7 +30,9 @@ func (a *AskData) generateAskFunction(coreConfig *CoreConfig, req *LLMRequest) a
 
 func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) error {
 	askData := &AskData{
-		ResearchData: make(map[string]string),
+		CommonData: &CommonData{
+			ResearchData: make(map[string]string),
+		},
 	}
 
 	askDAG, err := dag.NewDAG[string, *AskData]("_ask")
@@ -63,10 +41,42 @@ func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) error 
 		os.Exit(1)
 	}
 
+	fileListVertex := &dag.Vertex[string, *AskData]{
+		Name: "fileList",
+		DAG:  askDAG,
+		Run:  generateFileList(c, askData),
+	}
+	if !c.brainsConfig.GetConfig().ContextConfig.SendFileList {
+		fileListVertex.SkipConfig = &dag.SkipVertexConfig{
+			Enabled: true,
+			Reason:  "send_file_list flag is disabled",
+		}
+	}
+	_ = askDAG.AddVertex(fileListVertex)
+
+	logSummaryVertex := &dag.Vertex[string, *AskData]{
+		Name: "logSummary",
+		DAG:  askDAG,
+		Run:  generateLogSummary(c, llmRequest, ctx, askData),
+	}
+	if !c.brainsConfig.GetConfig().ContextConfig.SummarizeLogs {
+		logSummaryVertex.SkipConfig = &dag.SkipVertexConfig{
+			Enabled: true,
+			Reason:  "summarize_logs flag is disabled",
+		}
+	}
+	_ = askDAG.AddVertex(logSummaryVertex)
+
 	repoMapVertex := &dag.Vertex[string, *AskData]{
 		Name: "repoMap",
 		DAG:  askDAG,
 		Run:  generateRepoMap(ctx, askData),
+	}
+	if !c.brainsConfig.GetConfig().ContextConfig.SendAllTags {
+		repoMapVertex.SkipConfig = &dag.SkipVertexConfig{
+			Enabled: true,
+			Reason:  "send_all_tags flag is disabled",
+		}
 	}
 	_ = askDAG.AddVertex(repoMapVertex)
 
@@ -86,6 +96,8 @@ func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) error 
 	}
 	_ = askDAG.AddVertex(askVertex)
 
+	askDAG.Connect(fileListVertex.Name, researchVertex.Name)
+	askDAG.Connect(logSummaryVertex.Name, researchVertex.Name)
 	askDAG.Connect(repoMapVertex.Name, researchVertex.Name)
 	askDAG.Connect(researchVertex.Name, askVertex.Name)
 	pterm.Success.Println("askDAG beginning execution, planned flow printed")
@@ -103,10 +115,7 @@ func (c *CoreConfig) AskFlow(ctx context.Context, llmRequest *LLMRequest) error 
 func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool {
 	pterm.Info.Println("starting ask operation")
 	ctx := context.Background()
-	promptToSendBedrock := prompt
-	if logCtx := c.logger.GetLogContext(); logCtx != "" {
-		promptToSendBedrock = fmt.Sprintf("%s\n\n%s", logCtx, prompt)
-	}
+	promptToSendBedrock := c.addLogContextToPrompt(prompt)
 	if personaInstructions != "" {
 		prompt = fmt.Sprintf("%s%s", personaInstructions, prompt)
 	}

@@ -86,6 +86,13 @@ make clean     # removes generated binaries and logs
 
 All commands are wrapped in the Makefile; run `make help` for a quick overview of available targets.
 
+## Results
+
+So far, have successfully vibed out:
+
+* [brains.pads.sh](https://brains.pads.sh) - very simple application that acts as a redirect-heavy
+Next.js application that either routes for `curl` requests or redirects here for web.
+
 ## License
 This project is licensed under the MIT License – see the [LICENSE](LICENSE.md) file for details.
 

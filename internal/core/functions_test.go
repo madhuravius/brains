@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/madhuravius/brains/internal/aws"
+	brainsConfig "github.com/madhuravius/brains/internal/config"
 	"github.com/madhuravius/brains/internal/core"
 	mockBrains "github.com/madhuravius/brains/internal/mock"
 )
@@ -26,8 +27,9 @@ func setupCore(t *testing.T) (core.CoreImpl, *mockBrains.MockInvoker) {
 	invoker := &mockBrains.MockInvoker{}
 	awsCfg.SetInvoker(invoker)
 	awsCfg.SetLogger(&mockBrains.TestLogger{})
+	brainsCfg := brainsConfig.BrainsConfig{}
 
-	c := core.NewCoreConfig(awsCfg)
+	c := core.NewCoreConfig(awsCfg, &brainsCfg)
 	c.SetLogger(&mockBrains.TestLogger{})
 
 	return c, invoker

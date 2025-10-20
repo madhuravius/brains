@@ -10,24 +10,6 @@ import (
 	"github.com/madhuravius/brains/internal/dag"
 )
 
-func (c *CodeData) SetResearchData(url, data string) {
-	if c.ResearchData == nil {
-		c.ResearchData = make(map[string]string)
-	}
-	c.ResearchData[url] = data
-}
-
-func (c *CodeData) SetRepoMapContext(repoMap string) {
-	c.RepoMapContext = repoMap
-}
-
-func (c *CodeData) SetFileMapData(filePath, fileMapData string) {
-	if c.FileMapData == nil {
-		c.FileMapData = make(map[string]string)
-	}
-	c.FileMapData[filePath] = fileMapData
-}
-
 func (c *CodeData) generateDetermineCodeChangesFunction(coreConfig *CoreConfig, req *LLMRequest) codeDataDAGFunction {
 	additionalContext := ""
 	for url, data := range c.ResearchData {
@@ -59,7 +41,9 @@ func (c *CodeData) generateExecuteCodeEditsFunction(coreConfig *CoreConfig) code
 
 func (c *CoreConfig) CodeFlow(ctx context.Context, llmRequest *LLMRequest) error {
 	codeData := &CodeData{
-		ResearchData: make(map[string]string),
+		CommonData: &CommonData{
+			ResearchData: make(map[string]string),
+		},
 	}
 
 	codeDAG, err := dag.NewDAG[string, *CodeData]("_code")
@@ -68,10 +52,42 @@ func (c *CoreConfig) CodeFlow(ctx context.Context, llmRequest *LLMRequest) error
 		return err
 	}
 
+	fileListVertex := &dag.Vertex[string, *CodeData]{
+		Name: "fileList",
+		DAG:  codeDAG,
+		Run:  generateFileList(c, codeData),
+	}
+	if !c.brainsConfig.GetConfig().ContextConfig.SendFileList {
+		fileListVertex.SkipConfig = &dag.SkipVertexConfig{
+			Enabled: true,
+			Reason:  "send_file_list flag is disabled",
+		}
+	}
+	_ = codeDAG.AddVertex(fileListVertex)
+
+	logSummaryVertex := &dag.Vertex[string, *CodeData]{
+		Name: "logSummary",
+		DAG:  codeDAG,
+		Run:  generateLogSummary(c, llmRequest, ctx, codeData),
+	}
+	if !c.brainsConfig.GetConfig().ContextConfig.SummarizeLogs {
+		logSummaryVertex.SkipConfig = &dag.SkipVertexConfig{
+			Enabled: true,
+			Reason:  "summarize_logs flag is disabled",
+		}
+	}
+	_ = codeDAG.AddVertex(logSummaryVertex)
+
 	repoMapVertex := &dag.Vertex[string, *CodeData]{
 		Name: "repoMap",
 		DAG:  codeDAG,
 		Run:  generateRepoMap(ctx, codeData),
+	}
+	if !c.brainsConfig.GetConfig().ContextConfig.SendAllTags {
+		repoMapVertex.SkipConfig = &dag.SkipVertexConfig{
+			Enabled: true,
+			Reason:  "send_all_tags flag is disabled",
+		}
 	}
 	_ = codeDAG.AddVertex(repoMapVertex)
 
@@ -98,6 +114,8 @@ func (c *CoreConfig) CodeFlow(ctx context.Context, llmRequest *LLMRequest) error
 	}
 	_ = codeDAG.AddVertex(executeCodeEditsVertex)
 
+	codeDAG.Connect(fileListVertex.Name, researchVertex.Name)
+	codeDAG.Connect(logSummaryVertex.Name, researchVertex.Name)
 	codeDAG.Connect(repoMapVertex.Name, researchVertex.Name)
 	codeDAG.Connect(researchVertex.Name, determineCodeChangesVertex.Name)
 	codeDAG.Connect(determineCodeChangesVertex.Name, executeCodeEditsVertex.Name)
@@ -158,15 +176,11 @@ func (c *CoreConfig) ExecuteEditCode(data *CodeModelResponse) bool {
 func (c *CoreConfig) DetermineCodeChanges(prompt, personaInstructions, modelID, glob string) *CodeModelResponse {
 	ctx := context.Background()
 
-	promptToSendBedrock := ""
-	addedContext, err := c.enrichWithGlob(glob)
+	promptToSendBedrock, err := c.enrichWithGlob(glob)
 	if err != nil {
 		return nil
 	}
-	promptToSendBedrock += addedContext
-	if logCtx := c.logger.GetLogContext(); logCtx != "" {
-		promptToSendBedrock += fmt.Sprintf("%s\n%s\n%s", logCtx, prompt, CoderPromptPostProcess)
-	}
+	promptToSendBedrock = c.addLogContextToPrompt(fmt.Sprintf("%s\n%s\n%s", promptToSendBedrock, prompt, CoderPromptPostProcess))
 
 	req := aws.BedrockRequest{
 		Messages: []aws.BedrockMessage{

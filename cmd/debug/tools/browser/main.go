@@ -9,7 +9,11 @@ import (
 )
 
 func main() {
-	htmlData, err := browser.FetchWebContext(context.Background(), "https://github.com/madhuravius")
+	b, err := browser.NewBrowserConfig()
+	if err != nil {
+		pterm.Fatal.Printfln("browser.NewBrowserConfig: %v", err)
+	}
+	htmlData, err := b.FetchWebContext(context.Background(), "https://github.com/madhuravius")
 	if err != nil {
 		pterm.Fatal.Printfln("browser.FetchWebContext: %v", err)
 	}

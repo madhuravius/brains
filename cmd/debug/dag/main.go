@@ -6,8 +6,8 @@ import (
 	"github.com/pterm/pterm"
 )
 
-func main() {
-	d, err := dag.NewDAG[int, int]("_dag")
+func regularDAG() {
+	d1, err := dag.NewDAG[int, int]("_dag unskipped")
 	if err != nil {
 		pterm.Fatal.Printfln("dag.NewDAG: %v", err)
 	}
@@ -16,13 +16,46 @@ func main() {
 	v2 := &dag.Vertex[int, int]{Name: "b"}
 	v3 := &dag.Vertex[int, int]{Name: "c"}
 
-	_ = d.AddVertex(v1)
-	_ = d.AddVertex(v2)
-	_ = d.AddVertex(v3)
+	_ = d1.AddVertex(v1)
+	_ = d1.AddVertex(v2)
+	_ = d1.AddVertex(v3)
 
-	d.Connect("root", v1.Name)
-	d.Connect(v1.Name, v2.Name)
-	d.Connect(v2.Name, v3.Name)
-	d.Connect(v1.Name, v3.Name)
-	d.Visualize()
+	d1.Connect("root (no skip)", v1.Name)
+	d1.Connect(v1.Name, v2.Name)
+	d1.Connect(v2.Name, v3.Name)
+	d1.Connect(v1.Name, v3.Name)
+	d1.Visualize()
+}
+
+func skippedDAG() {
+	d2, err := dag.NewDAG[int, int]("_dag with skips")
+	if err != nil {
+		pterm.Fatal.Printfln("dag.NewDAG: %v", err)
+	}
+
+	v1 := &dag.Vertex[int, int]{Name: "a"}
+	v2 := &dag.Vertex[int, int]{Name: "b", SkipConfig: &dag.SkipVertexConfig{Enabled: true, Reason: "skipping for debug"}}
+	v3 := &dag.Vertex[int, int]{Name: "c", Needs: map[*dag.Vertex[int, int]]bool{v2: true}}
+	v4 := &dag.Vertex[int, int]{Name: "d", Needs: map[*dag.Vertex[int, int]]bool{v2: true, v3: true}}
+	// should NOT get skipped
+	v5 := &dag.Vertex[int, int]{Name: "e", Needs: map[*dag.Vertex[int, int]]bool{}}
+
+	_ = d2.AddVertex(v1)
+	_ = d2.AddVertex(v2)
+	_ = d2.AddVertex(v3)
+	_ = d2.AddVertex(v4)
+	_ = d2.AddVertex(v5)
+
+	d2.Connect("root (no skip)", v1.Name)
+	d2.Connect(v1.Name, v2.Name)
+	d2.Connect(v2.Name, v3.Name)
+	d2.Connect(v1.Name, v3.Name)
+	d2.Connect(v3.Name, v4.Name)
+	d2.Connect(v3.Name, v5.Name)
+	d2.Visualize()
+}
+
+func main() {
+	regularDAG()
+	skippedDAG()
 }

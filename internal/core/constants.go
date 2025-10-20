@@ -6,6 +6,22 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 )
 
+const HealthCheck = `"This is a health check via API call to make sure a connection to this LLM is established. Please reply with a short three to five word affirmation if you are able to interpret this message that the health check is successful.`
+
+const LogSummary = `
+You are a specialized log summarizer for LLM preprocessing.
+
+Parent prompt:
+%s
+
+Logs:
+%s
+
+Instructions:
+Summarize and condense these logs, keeping only the parts relevant to the parent prompt.
+Focus on errors, decisions, state transitions, or any parts directly connected to the parent prompt topic.
+Output a short structured summary.`
+
 const GeneralResearchActivities = `
 You are a code assistant.
 

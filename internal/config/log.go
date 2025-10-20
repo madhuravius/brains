@@ -1,9 +1,11 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/charmbracelet/glamour"
@@ -42,7 +44,16 @@ func (b *BrainsConfig) GetLogContext() string {
 	if err != nil {
 		return ""
 	}
-	return string(data)
+
+	newline := "\n"
+	if bytes.Contains(data, []byte("\r\n")) {
+		newline = "\r\n"
+	}
+
+	re := regexp.MustCompile(`(?m)(?:^[ \t]*\r?\n){3,}`)
+	out := re.ReplaceAll(data, []byte(newline+newline))
+
+	return string(out)
 }
 
 func (b *BrainsConfig) PrintLogs() {

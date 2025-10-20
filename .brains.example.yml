@@ -1,6 +1,16 @@
 aws_region: us-east-1
 model: openai.gpt-oss-120b-1:0
 logging_enabled: true
+# context_config - object - parent config structure that will determine how things get sent in context. Example of utilization is listed below
+#   send_logs true/false - will send logs in its entirety raw
+#   summarize_logs  - will send a summary of logs. if this is enabled an optional step will be execute to summarize the current conversation if possible. 
+#   send_all_tags - will send ALL tags from a repo_map in current_repository. this will add a large number of characters to context depending on number of symbols in repo
+#   send_file_list - will send a list of all files and names
+context_config:
+  send_logs: false
+  summarize_logs: true
+  send_all_tags: false
+  send_file_list: true
 default_persona: dev
 default_context: "**/*"
 # pre_commands will execute commands with "bash -c 'command'" before starting. a good example to ensure AWS credentials with aws sso:
