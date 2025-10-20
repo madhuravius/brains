@@ -15,6 +15,7 @@ require (
 	github.com/dominikbraun/graph v0.23.0
 	github.com/go-rod/rod v0.116.2
 	github.com/go-shiori/go-readability v0.0.0-20250217085726-9f5bf5ca7612
+	github.com/google/go-github/v76 v76.0.0
 	github.com/muesli/termenv v0.16.0
 	github.com/pterm/pterm v0.12.82
 	github.com/sergi/go-diff v1.4.0
@@ -55,6 +56,7 @@ require (
 	github.com/dlclark/regexp2 v1.11.0 // indirect
 	github.com/go-shiori/dom v0.0.0-20230515143342-73569d674e1c // indirect
 	github.com/gogs/chardet v0.0.0-20211120154057-b7413eaefb8f // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gookit/color v1.5.4 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/lithammer/fuzzysearch v1.1.8 // indirect

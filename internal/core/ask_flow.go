@@ -2,13 +2,11 @@ package core
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/pterm/pterm"
 
-	"github.com/madhuravius/brains/internal/aws"
 	"github.com/madhuravius/brains/internal/dag"
 )
 
@@ -128,35 +126,13 @@ func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool
 	if addedContext != "" {
 		promptToSendBedrock = fmt.Sprintf("%s%s", prompt, addedContext)
 	}
-	req := aws.BedrockRequest{
-		Messages: []aws.BedrockMessage{
-			{
-				Role: "user",
-				Content: []aws.BedrockContent{
-					{
-						Type: "text",
-						Text: promptToSendBedrock,
-					},
-				},
-			},
-		},
+	_, usage, err := c.generateBedrockTextResponse(ctx, promptToSendBedrock, modelID)
+	if err != nil {
+		return false
 	}
 
-	respBody, err := c.awsImpl.CallAWSBedrock(ctx, modelID, req)
-	if err != nil {
-		pterm.Error.Printf("invokeModel error: %v\n", err)
-		return false
-	}
-	var data aws.ChatResponse
-	if err := json.Unmarshal(respBody, &data); err != nil {
-		pterm.Error.Printf("json Unmarshal error (when parsing Bedrock Body): %v\n", err)
-		return false
-	}
-	for _, choice := range data.Choices {
-		c.logger.LogMessage("[RESPONSE] \n " + choice.Message.Content)
-		c.awsImpl.PrintBedrockMessage(choice.Message.Content)
-	}
-	c.awsImpl.PrintCost(data.Usage, modelID)
-	c.awsImpl.PrintContext(data.Usage, modelID)
+	c.awsImpl.PrintCost(usage, modelID)
+	c.awsImpl.PrintContext(usage, modelID)
+
 	return true
 }
