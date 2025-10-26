@@ -4,7 +4,7 @@ go 1.24.4
 
 require (
 	atomicgo.dev/keyboard v0.2.9
-	github.com/aws/aws-sdk-go-v2 v1.39.3
+	github.com/aws/aws-sdk-go-v2 v1.39.4
 	github.com/aws/aws-sdk-go-v2/config v1.31.13
 	github.com/aws/aws-sdk-go-v2/service/bedrock v1.48.1
 	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.41.0
