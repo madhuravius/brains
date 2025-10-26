@@ -91,10 +91,12 @@ func generateLogSummary[T LogSummarizable](coreConfig *CoreConfig, llmRequest *L
 	return func(inputs map[string]string) (string, error) {
 		logCtx := coreConfig.logger.GetLogContext()
 
-		logSummary, usage, err := coreConfig.generateBedrockTextResponse(
+		logSummary, usage, err := coreConfig.GenerateBedrockTextResponse(
 			ctx,
-			fmt.Sprintf(LogSummary, llmRequest.Prompt, logCtx),
-			coreConfig.brainsConfig.GetConfig().Model,
+			&LLMRequest{
+				Prompt:  fmt.Sprintf(LogSummary, llmRequest.Prompt, logCtx),
+				ModelID: llmRequest.ModelID,
+			},
 		)
 		if err != nil {
 			return "", err
@@ -215,7 +217,10 @@ func (c *CoreConfig) Research(prompt, modelID, glob string) *ResearchActions {
 
 func (c *CoreConfig) ValidateBedrockConfiguration(modelID string) bool {
 	ctx := context.Background()
-	_, usage, err := c.generateBedrockTextResponse(ctx, HealthCheck, modelID)
+	_, usage, err := c.GenerateBedrockTextResponse(ctx, &LLMRequest{
+		Prompt:  HealthCheck,
+		ModelID: modelID,
+	})
 	if err != nil {
 		return false
 	}
@@ -226,7 +231,7 @@ func (c *CoreConfig) ValidateBedrockConfiguration(modelID string) bool {
 	return true
 }
 
-func (c *CoreConfig) generateBedrockTextResponse(ctx context.Context, request, modelID string) (response string, usage map[string]any, err error) {
+func (c *CoreConfig) GenerateBedrockTextResponse(ctx context.Context, request *LLMRequest) (response string, usage map[string]any, err error) {
 	simpleReq := aws.BedrockRequest{
 		Messages: []aws.BedrockMessage{
 			{
@@ -234,14 +239,14 @@ func (c *CoreConfig) generateBedrockTextResponse(ctx context.Context, request, m
 				Content: []aws.BedrockContent{
 					{
 						Type: "text",
-						Text: request,
+						Text: request.Prompt,
 					},
 				},
 			},
 		},
 	}
 	c.logger.LogMessage("[REQUEST] \n health‑check prompt")
-	respBody, err := c.awsImpl.CallAWSBedrock(ctx, modelID, simpleReq)
+	respBody, err := c.awsImpl.CallAWSBedrock(ctx, request.ModelID, simpleReq)
 	if err != nil {
 		pterm.Error.Printf("invokeModel error: %v\n", err)
 		return "", nil, err
