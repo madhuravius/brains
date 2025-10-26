@@ -12,6 +12,7 @@ import (
 type CoreImpl interface {
 	AskFlow(ctx context.Context, llmRequest *LLMRequest) error
 	CodeFlow(ctx context.Context, llmRequest *LLMRequest) error
+	GenerateBedrockTextResponse(ctx context.Context, request *LLMRequest) (response string, usage map[string]any, err error)
 	ValidateBedrockConfiguration(modelID string) bool
 
 	SetLogger(l brainsConfig.SimpleLogger)

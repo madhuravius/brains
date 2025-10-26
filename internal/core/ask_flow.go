@@ -126,7 +126,10 @@ func (c *CoreConfig) Ask(prompt, personaInstructions, modelID, glob string) bool
 	if addedContext != "" {
 		promptToSendBedrock = fmt.Sprintf("%s%s", prompt, addedContext)
 	}
-	_, usage, err := c.generateBedrockTextResponse(ctx, promptToSendBedrock, modelID)
+	_, usage, err := c.GenerateBedrockTextResponse(ctx, &LLMRequest{
+		Prompt:  promptToSendBedrock,
+		ModelID: modelID,
+	})
 	if err != nil {
 		return false
 	}

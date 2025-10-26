@@ -36,10 +36,7 @@ Goals:
 - If the body is empty, create a minimal body from the title without adding scope.
 
 Tasks:
-1) Title: Rewrite to a single, imperative, scope-limited line (≈5–12 words) that preserves meaning and key terms.
-2) Body: Tighten wording, remove redundancy, keep structure simple. Maintain code blocks, checklists, and references.
-3) Edits Made: At the very end of the body, create or update an "Edits Made" section with 1–2 sentences describing your changes. If such a section exists, append a new sentence to it.
-4) Suggested Format: Provide a minimal template others can reuse to keep issues simple.
+%s
 
 Output strictly in this structure (no extra commentary, in this exact order):
 
@@ -57,6 +54,11 @@ Body:
 - Acceptance Criteria: 2–5 concise bullet checks
 - Context/Links: only essential references
 `
+	TitleGeneration = `
+Rewrite to a single, imperative, scope-limited line (≈5–12 words) that preserves meaning and key terms so it can serve as the issue title.
+`
+	BodyGeneration = `
+Tighten wording, remove redundancy, keep structure simple. Maintain code blocks, checklists, and references so it can serve as the issue body.`
 )
 
 func main() {
@@ -102,16 +104,34 @@ func main() {
 	result, _ := r.Render(issue.GetBody())
 	pterm.Info.Println(result)
 
-	req := &core.LLMRequest{
+	// generate title
+	titleReq := &core.LLMRequest{
 		Glob:                glob,
 		ModelID:             modelID,
 		PersonaInstructions: personaInstructions,
-		Prompt:              fmt.Sprintf(IssueRefiner, issue.GetTitle(), issue.GetBody()),
+		Prompt:              fmt.Sprintf(IssueRefiner, issue.GetTitle(), issue.GetBody(), TitleGeneration),
 	}
 
-	if err := coreConfig.AskFlow(ctx, req); err != nil {
-		pterm.Error.Printf("failed to run ask flow: %v\n", err)
+	title, _, err := coreConfig.GenerateBedrockTextResponse(ctx, titleReq)
+	if err != nil {
+		pterm.Error.Printf("failed to run GenerateBedrockTextResponse: %v\n", err)
 		os.Exit(1)
 	}
 
+	// generate body
+	bodyReq := &core.LLMRequest{
+		Glob:                glob,
+		ModelID:             modelID,
+		PersonaInstructions: personaInstructions,
+		Prompt:              fmt.Sprintf(IssueRefiner, issue.GetTitle(), issue.GetBody(), BodyGeneration),
+	}
+
+	body, _, err := coreConfig.GenerateBedrockTextResponse(ctx, bodyReq)
+	if err != nil {
+		pterm.Error.Printf("failed to run GenerateBedrockTextResponse: %v\n", err)
+		os.Exit(1)
+	}
+
+	pterm.Info.Printfln("title: %s", title)
+	pterm.Info.Printfln("body: %s", body)
 }

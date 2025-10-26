@@ -25,6 +25,9 @@ func main() {
 	}
 
 	issues, _, err := client.Issues.ListByRepo(ctx, Owner, "brains", nil)
+	if err != nil {
+		pterm.Fatal.Printfln("error in issues list retrieval: %v", err)
+	}
 	for _, issue := range issues {
 		pterm.Info.Printfln("issue: %s (updated: %s)", *issue.Title, issue.GetUpdatedAt())
 		r, _ := glamour.NewTermRenderer(
